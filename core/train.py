@@ -17,7 +17,7 @@ from datetime import datetime as dt
 from tensorboardX import SummaryWriter
 from time import time
 
-from core.test import test_net
+# from core.test import test_net
 from models.encoder import Encoder
 from models.decoder import Decoder
 
@@ -28,6 +28,7 @@ def train_net(cfg):
     # Set up data augmentation
     IMG_SIZE = cfg.CONST.IMG_H, cfg.CONST.IMG_W
     CROP_SIZE = cfg.CONST.CROP_IMG_H, cfg.CONST.CROP_IMG_W
+
     train_transforms = utils.data_transforms.Compose([
         utils.data_transforms.RandomCrop(IMG_SIZE, CROP_SIZE),
         utils.data_transforms.RandomBackground(cfg.TRAIN.RANDOM_BG_COLOR_RANGE),
@@ -49,14 +50,14 @@ def train_net(cfg):
     train_dataset_loader = utils.data_loaders.DATASET_LOADER_MAPPING[cfg.DATASET.TRAIN_DATASET](cfg)
     val_dataset_loader = utils.data_loaders.DATASET_LOADER_MAPPING[cfg.DATASET.TEST_DATASET](cfg)
     train_data_loader = torch.utils.data.DataLoader(dataset=train_dataset_loader.get_dataset(
-        utils.data_loaders.DatasetType.TRAIN, cfg.CONST.N_VIEWS_RENDERING, train_transforms),
+                                                    utils.data_loaders.DatasetType.TRAIN, train_transforms),
                                                     batch_size=cfg.CONST.BATCH_SIZE,
                                                     num_workers=cfg.TRAIN.NUM_WORKER,
                                                     pin_memory=True,
                                                     shuffle=True,
                                                     drop_last=True)
     val_data_loader = torch.utils.data.DataLoader(dataset=val_dataset_loader.get_dataset(
-        utils.data_loaders.DatasetType.VAL, cfg.CONST.N_VIEWS_RENDERING, val_transforms),
+                                                  utils.data_loaders.DatasetType.VAL, val_transforms),
                                                   batch_size=1,
                                                   num_workers=1,
                                                   pin_memory=True,
@@ -64,14 +65,14 @@ def train_net(cfg):
 
     # Set up networks
     encoder = Encoder(cfg)
-    decoder = pc_decoder(cfg)
+    decoder = Decoder(cfg)
     
     print('[DEBUG] %s Parameters in Encoder: %d.' % (dt.now(), utils.network_utils.count_parameters(encoder)))
     print('[DEBUG] %s Parameters in Decoder: %d.' % (dt.now(), utils.network_utils.count_parameters(decoder)))
 
     # Initialize weights of networks
     encoder.apply(utils.network_utils.init_weights)
-    decoder.apply(utils.network_utils.init_weights)
+    # decoder.apply(utils.network_utils.init_weights) # Something need to change!
 
     # Set up solver
     if cfg.TRAIN.POLICY == 'adam':
@@ -150,18 +151,24 @@ def train_net(cfg):
         batch_end_time = time()
         n_batches = len(train_data_loader)
         for batch_idx, (taxonomy_names, sample_names, rendering_images,
-                        ground_truth_pcs) in enumerate(train_data_loader):
+                        ground_truth_point_clouds) in enumerate(train_data_loader):
+            
+            # Only one image per batch
+            rendering_images = torch.squeeze(rendering_images, 1)
+
             # Measure data time
             data_time.update(time() - batch_end_time)
 
             # Get data from data loader
             rendering_images = utils.network_utils.var_or_cuda(rendering_images)
-            ground_truth_pcs = utils.network_utils.var_or_cuda(ground_truth_volumes)
-
+            ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
+             
             # Train the encoder, decoder, refiner, and merger
             image_features = encoder(rendering_images)
-            generated_pcs = decoder(image_features)
-
+            print(image_features.size())
+            generated_point_clouds = decoder(image_features)
+            
+            break
             # TO DO:
             # loss computation
             # rec_loss = ... 
@@ -189,6 +196,8 @@ def train_net(cfg):
                 '[INFO] %s [Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) REC_Loss = %.4f '
                 % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val,
                    data_time.val, rec_loss.item()))
+        
+        break
 
         # Append epoch loss to TensorBoard
         train_writer.add_scalar('EncoderDecoder/EpochLoss', rec_losses.avg, epoch_idx + 1)
@@ -202,7 +211,7 @@ def train_net(cfg):
         print('[INFO] %s Epoch [%d/%d] EpochTime = %.3f (s) EDLoss = %.4f' %
               (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, epoch_end_time - epoch_start_time, encoder_losses.avg))
 
-        # Validate the training models
+    """         # Validate the training models
         iou = test_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, encoder, decoder)
 
         # Save weights to file
@@ -221,7 +230,7 @@ def train_net(cfg):
             best_epoch = epoch_idx + 1
             utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'best-ckpt.pth'), epoch_idx + 1, encoder,
                                                  encoder_solver, decoder, decoder_solver, best_cd, best_epoch)
-
+    """
     # Close SummaryWriter for TensorBoard
     train_writer.close()
     val_writer.close()

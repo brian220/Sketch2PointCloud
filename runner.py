@@ -18,7 +18,7 @@ from pprint import pprint
 
 from config import cfg
 from core.train import train_net
-from core.test import test_net
+# from core.test import test_net
 
 
 def get_args_from_command_line():

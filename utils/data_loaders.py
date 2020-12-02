@@ -42,12 +42,12 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         return len(self.file_list)
 
     def __getitem__(self, idx):
-        taxonomy_name, sample_name, rendering_image, point_cloud = self.get_datum(idx)
+        taxonomy_name, sample_name, rendering_images, point_cloud = self.get_datum(idx)
 
         if self.transforms:
-            rendering_image = self.transforms(rendering_image)
+            rendering_images = self.transforms(rendering_images)
 
-        return taxonomy_name, sample_name, rendering_image, point_cloud
+        return taxonomy_name, sample_name, rendering_images, point_cloud
 
     def get_datum(self, idx):
         taxonomy_name = self.file_list[idx]['taxonomy_name']
@@ -57,17 +57,20 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
 
         # get data of rendering images (sample 1 image from paths)
         if self.dataset_type == DatasetType.TRAIN:
-            selected_rendering_image_path = random.sample(range(len(rendering_image_paths)), 1)
+            selected_rendering_image_path = rendering_image_paths[random.randint(0, len(rendering_image_paths) - 1)]
         else:
         # test, valid with the first image
             selected_rendering_image_path = rendering_image_paths[1]
         
         # read the test, train image
+        # print(selected_rendering_image_path)
+        rendering_images = []
         rendering_image =  cv2.imread(selected_rendering_image_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.
         if len(rendering_image.shape) < 3:
             print('[FATAL] %s It seems that there is something wrong with the image file %s' %
                      (dt.now(), image_path))
             sys.exit(2)
+        rendering_images.append(rendering_image)
 
         # get data of point cloud
         _, suffix = os.path.splitext(point_cloud_path)
@@ -76,7 +79,7 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
             point_cloud = PyntCloud.from_file(point_cloud_path)
             point_cloud = np.array(point_cloud.points)
 
-        return taxonomy_name, sample_name, np.asarray(rendering_image), point_cloud
+        return taxonomy_name, sample_name, np.asarray(rendering_images), point_cloud
 
 
 # //////////////////////////////// = End of ShapeNetDataset Class Definition = ///////////////////////////////// #
@@ -87,7 +90,7 @@ class ShapeNetDataLoader:
         self.dataset_taxonomy = None
         self.rendering_image_path_template = cfg.DATASETS.SHAPENET.RENDERING_PATH
         self.point_cloud_path_template = cfg.DATASETS.SHAPENET.POINT_CLOUD_PATH
-        self.class_name = cfg.CLASS
+        self.class_name = cfg.DATASET.CLASS
 
         # Load all taxonomies of the dataset
         with open(cfg.DATASETS.SHAPENET.TAXONOMY_FILE_PATH, encoding='utf-8') as file:
@@ -97,17 +100,17 @@ class ShapeNetDataLoader:
         self.dataset_class_data_taxonomy = self.dataset_taxonomy[self.class_name]
 
     def get_dataset(self, dataset_type, transforms=None):
-        taxonomy_folder_name = dataset_class_data_taxonomy['taxonomy_id']
+        taxonomy_folder_name = self.dataset_class_data_taxonomy['taxonomy_id']
         print('[INFO] %s Collecting files of Taxonomy[ID=%s, Name=%s]' %
-                (dt.now(), dataset_class_data_taxonomy['taxonomy_id'], dataset_class_data_taxonomy.key())
+                (dt.now(), self.dataset_class_data_taxonomy['taxonomy_id'], self.class_name))
         
         samples = []
         if dataset_type == DatasetType.TRAIN:
-            samples = dataset_class_data_taxonomy['train']
+            samples = self.dataset_class_data_taxonomy['train']
         elif dataset_type == DatasetType.TEST:
-            samples = dataset_class_data_taxonomy['test']
+            samples = self.dataset_class_data_taxonomy['test']
         elif dataset_type == DatasetType.VAL:
-            samples = dataset_class_data_taxonomy['val']
+            samples = self.dataset_class_data_taxonomy['val']
 
         files = self.get_files_of_taxonomy(taxonomy_folder_name, samples)
 

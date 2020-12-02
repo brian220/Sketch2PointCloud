@@ -14,7 +14,7 @@ from math import ceil
 
 class Decoder(torch.nn.Module):
     def __init__(self, cfg):
-        super(pc_decoder, self).__init__()
+        super(Decoder, self).__init__()
         self.cfg = cfg
         self.batch_size = cfg.CONST.BATCH_SIZE
 
@@ -22,21 +22,22 @@ class Decoder(torch.nn.Module):
         self.features = [96, 256, 256, 256, 128, 128, 128, 3]
         self.degrees = [1, 2, 2, 2, 2, 2, 64]
         self.layer_num = len(self.features) - 1
-        assert self.layer_num == len(degrees), "Number of features should be one more than number of degrees."
+        assert self.layer_num == len(self.degrees), "Number of features should be one more than number of degrees."
         self.pointcloud = None
-        
-        vertex_num = 1
-        self.gcn = nn.Sequential()
+        self.vertex_num = 1
+        self.support = 10
+
+        self.gcn = torch.nn.Sequential()
         for inx in range(self.layer_num):
             if inx == self.layer_num - 1:
                 self.gcn.add_module('TreeGCN_'+str(inx),
                                     TreeGCN(self.batch_size, inx, self.features, self.degrees, 
-                                            support=support, node=vertex_num, upsample=True, activation=False))
+                                            support=self.support, node=self.vertex_num, upsample=True, activation=False))
             else:
                 self.gcn.add_module('TreeGCN_'+str(inx),
                                     TreeGCN(self.batch_size, inx, self.features, self.degrees, 
-                                            support=support, node=vertex_num, upsample=True, activation=True))
-            vertex_num = int(vertex_num * degrees[inx])
+                                            support=self.support, node=self.vertex_num, upsample=True, activation=True))
+            self.vertex_num = int(self.vertex_num * self.degrees[inx])
 
     def forward(self, tree):
         feat = self.gcn(tree)

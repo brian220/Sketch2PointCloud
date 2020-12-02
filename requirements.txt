@@ -6,3 +6,4 @@ opencv-python
 scipy
 torchvision
 tensorboardX==1.2.0
+pyntcloud
