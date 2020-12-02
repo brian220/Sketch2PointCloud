@@ -1,0 +1,8 @@
+argparse
+easydict
+matplotlib==3.0.3
+numpy
+opencv-python
+scipy
+torchvision
+tensorboardX==1.2.0
