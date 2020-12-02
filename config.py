@@ -14,7 +14,7 @@ __C.DATASETS                                = edict()
 __C.DATASETS.SHAPENET                       = edict()
 __C.DATASETS.SHAPENET.TAXONOMY_FILE_PATH    = './datasets/ShapeNet.json'
 __C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/itri/Files_2TB/chaoyu/pointcloud3d/dataset/ShapeNetRendering_copy/%s/%s/rendering/%02d.png'
-__C.DATASETS.SHAPENET.POINTCLOUD_PATH       = '/media/itri/Files_2TB/chaoyu/pointcloud3d/dataset/shape_net_core_uniform_samples_2048/%s/%s.ply'
+__C.DATASETS.SHAPENET.POINT_CLOUD_PATH       = '/media/itri/Files_2TB/chaoyu/pointcloud3d/dataset/shape_net_core_uniform_samples_2048/%s/%s.ply'
 
 #
 # Dataset
@@ -55,7 +55,6 @@ __C.NETWORK.LEAKY_VALUE                     = .2
 __C.NETWORK.TCONV_USE_BIAS                  = False
 __C.NETWORK.USE_REFINER                     = True
 __C.NETWORK.USE_MERGER                      = True
-__C.TREE_GCN_FEATURE                        = [96, 256, 256, 256, 128, 128, 128, 3]
 
 #
 # Training
