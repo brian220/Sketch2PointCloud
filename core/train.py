@@ -166,7 +166,9 @@ def train_net(cfg):
             # Train the encoder, decoder, refiner, and merger
             image_features = encoder(rendering_images)
             print(image_features.size())
-            generated_point_clouds = decoder(image_features)
+            tree = [image_features]
+            generated_point_clouds = decoder(tree)
+            print(generated_point_clouds.size())
             
             break
             # TO DO:

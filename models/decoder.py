@@ -19,8 +19,8 @@ class Decoder(torch.nn.Module):
         self.batch_size = cfg.CONST.BATCH_SIZE
 
         # parameter for tree gcn
-        self.features = [96, 256, 256, 256, 128, 128, 128, 3]
-        self.degrees = [1, 2, 2, 2, 2, 2, 64]
+        self.features = [256, 512, 256, 256, 128, 128, 64, 3]
+        self.degrees = [2, 2, 2, 2, 2, 4, 16]
         self.layer_num = len(self.features) - 1
         assert self.layer_num == len(self.degrees), "Number of features should be one more than number of degrees."
         self.pointcloud = None
