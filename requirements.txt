@@ -4,6 +4,10 @@ matplotlib==3.0.3
 numpy
 opencv-python
 scipy
-torchvision
+torch==1.2.0
+torchvision==0.4.0
 tensorboardX==1.2.0
 pyntcloud
+# Please check for your cuda version and select the right version of cupy
+# cupy-cuda100 is only work for cuda 10.0
+cupy-cuda100

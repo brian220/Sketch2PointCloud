@@ -21,7 +21,12 @@ from time import time
 from models.encoder import Encoder
 from models.decoder import Decoder
 
+from losses.chamfer_loss import ChamferLoss
+from losses.earth_mover_distance import EMD
+
 def train_net(cfg):
+    print("cuda is available?", torch.cuda.is_available())
+    
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
     torch.backends.cudnn.benchmark = True
 
@@ -105,8 +110,8 @@ def train_net(cfg):
         decoder = torch.nn.DataParallel(decoder).cuda()
 
     # Set up loss functions
-    # bce_loss = torch.nn.BCELoss()
-    # TO DO: CD EMD loss
+    chamfer = ChamferLoss().cuda()
+    emd = EMD().cuda()
 
     # Load pretrained model if exists
     init_epoch = 0
@@ -142,7 +147,7 @@ def train_net(cfg):
         # Batch average meterics
         batch_time = utils.network_utils.AverageMeter()
         data_time = utils.network_utils.AverageMeter()
-        rec_losses = utils.network_utils.AverageMeter()
+        reconstruction_losses = utils.network_utils.AverageMeter()
 
         # switch models to training mode
         encoder.train()
@@ -162,7 +167,9 @@ def train_net(cfg):
             # Get data from data loader
             rendering_images = utils.network_utils.var_or_cuda(rendering_images)
             ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
-             
+            
+            print("gt size", ground_truth_point_clouds.size())
+            print("gt_cuda", ground_truth_point_clouds.is_cuda)
             # Train the encoder, decoder, refiner, and merger
             image_features = encoder(rendering_images)
             print(image_features.size())
@@ -170,26 +177,23 @@ def train_net(cfg):
             generated_point_clouds = decoder(tree)
             print(generated_point_clouds.size())
             
-            break
-            # TO DO:
             # loss computation
-            # rec_loss = ... 
+            reconstruction_loss = torch.mean(emd(generated_point_clouds, ground_truth_point_clouds)) 
             
             # Gradient decent
             encoder.zero_grad()
             decoder.zero_grad()
             
-            rec_loss.backward()
+            reconstruction_loss.backward()
 
             encoder_solver.step()
             decoder_solver.step()
-
-            # Append loss to average metrics
-            rec_losses.update(rec_loss.item())
             
+            reconstruction_losses.update(reconstruction_loss.item())
+
             # Append loss to TensorBoard
             n_itr = epoch_idx * n_batches + batch_idx
-            train_writer.add_scalar('EncoderDecoder/BatchLoss', encoder_loss.item(), n_itr)
+            train_writer.add_scalar('EncoderDecoder/BatchLoss', reconstruction_loss.item(), n_itr)
             
             # Tick / tock
             batch_time.update(time() - batch_end_time)
@@ -197,12 +201,12 @@ def train_net(cfg):
             print(
                 '[INFO] %s [Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) REC_Loss = %.4f '
                 % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val,
-                   data_time.val, rec_loss.item()))
-        
+                   data_time.val, reconstruction_loss.item()))
+        # debug
         break
 
         # Append epoch loss to TensorBoard
-        train_writer.add_scalar('EncoderDecoder/EpochLoss', rec_losses.avg, epoch_idx + 1)
+        train_writer.add_scalar('EncoderDecoder/EpochLoss', reconstruction_losses.avg, epoch_idx + 1)
 
         # Adjust learning rate
         encoder_lr_scheduler.step()
@@ -210,8 +214,8 @@ def train_net(cfg):
 
         # Tick / tock
         epoch_end_time = time()
-        print('[INFO] %s Epoch [%d/%d] EpochTime = %.3f (s) EDLoss = %.4f' %
-              (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, epoch_end_time - epoch_start_time, encoder_losses.avg))
+        print('[INFO] %s Epoch [%d/%d] EpochTime = %.3f (s) REC_Loss = %.4f' %
+              (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, epoch_end_time - epoch_start_time, reconstruction_losses.avg))
 
     """         # Validate the training models
         iou = test_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, encoder, decoder)
