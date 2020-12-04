@@ -168,14 +168,10 @@ def train_net(cfg):
             rendering_images = utils.network_utils.var_or_cuda(rendering_images)
             ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
             
-            print("gt size", ground_truth_point_clouds.size())
-            print("gt_cuda", ground_truth_point_clouds.is_cuda)
             # Train the encoder, decoder, refiner, and merger
             image_features = encoder(rendering_images)
-            print(image_features.size())
             tree = [image_features]
             generated_point_clouds = decoder(tree)
-            print(generated_point_clouds.size())
             
             # loss computation
             reconstruction_loss = torch.mean(emd(generated_point_clouds, ground_truth_point_clouds)) 
@@ -202,8 +198,7 @@ def train_net(cfg):
                 '[INFO] %s [Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) REC_Loss = %.4f '
                 % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val,
                    data_time.val, reconstruction_loss.item()))
-        # debug
-        break
+            break
 
         # Append epoch loss to TensorBoard
         train_writer.add_scalar('EncoderDecoder/EpochLoss', reconstruction_losses.avg, epoch_idx + 1)
@@ -217,8 +212,8 @@ def train_net(cfg):
         print('[INFO] %s Epoch [%d/%d] EpochTime = %.3f (s) REC_Loss = %.4f' %
               (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, epoch_end_time - epoch_start_time, reconstruction_losses.avg))
 
-    """         # Validate the training models
-        iou = test_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, encoder, decoder)
+        # Validate the training models
+        test_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, encoder, decoder)
 
         # Save weights to file
         if (epoch_idx + 1) % cfg.TRAIN.SAVE_FREQ == 0:
@@ -226,9 +221,10 @@ def train_net(cfg):
                 os.makedirs(ckpt_dir)
 
             utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'ckpt-epoch-%04d.pth' % (epoch_idx + 1)),
-                                                 epoch_idx + 1, encoder, encoder_solver, decoder, decoder_solver,
-                                                 best_cd, best_epoch)
-        if iou > best_iou:
+                                                 epoch_idx + 1, encoder, encoder_solver, decoder, decoder_solver)
+        
+
+        """    if iou > best_iou:
             if not os.path.exists(ckpt_dir):
                 os.makedirs(ckpt_dir)
 
@@ -236,7 +232,7 @@ def train_net(cfg):
             best_epoch = epoch_idx + 1
             utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'best-ckpt.pth'), epoch_idx + 1, encoder,
                                                  encoder_solver, decoder, decoder_solver, best_cd, best_epoch)
-    """
+        """
     # Close SummaryWriter for TensorBoard
     train_writer.close()
     val_writer.close()

@@ -35,20 +35,11 @@ def save_checkpoints(cfg, file_path, epoch_idx, encoder, encoder_solver, decoder
     print('[INFO] %s Saving checkpoint to %s ...' % (dt.now(), file_path))
     checkpoint = {
         'epoch_idx': epoch_idx,
-        'best_iou': best_iou,
-        'best_epoch': best_epoch,
         'encoder_state_dict': encoder.state_dict(),
         'encoder_solver_state_dict': encoder_solver.state_dict(),
         'decoder_state_dict': decoder.state_dict(),
         'decoder_solver_state_dict': decoder_solver.state_dict()
     }
-
-    if cfg.NETWORK.USE_REFINER:
-        checkpoint['refiner_state_dict'] = refiner.state_dict()
-        checkpoint['refiner_solver_state_dict'] = refiner_solver.state_dict()
-    if cfg.NETWORK.USE_MERGER:
-        checkpoint['merger_state_dict'] = merger.state_dict()
-        checkpoint['merger_solver_state_dict'] = merger_solver.state_dict()
 
     torch.save(checkpoint, file_path)
 

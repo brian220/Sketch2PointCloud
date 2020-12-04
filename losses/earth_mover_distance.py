@@ -16,8 +16,6 @@ class EMD(Module):
 class EMDFunction(Function):
     @staticmethod
     def forward(ctx, xyz1, xyz2):
-        print("xyz1", xyz1.is_cuda)
-        print("xyz2", xyz2.is_cuda)
         assert xyz1.dim() == 3 and xyz1.is_cuda and xyz2.is_cuda
         assert xyz1.shape[-1] == 3  # as done by Panos
         batch_size, num_pts, pt_dim = xyz1.size()

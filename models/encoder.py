@@ -54,19 +54,19 @@ class Encoder(torch.nn.Module):
     
     def forward(self, rendering_image):
         features = self.vgg(rendering_image)
-        print(features.size())    # torch.Size([batch_size, 512, 28, 28])
+        # print(features.size())    # torch.Size([batch_size, 512, 28, 28])
         features = self.layer1(features)
-        print(features.size())    # torch.Size([batch_size, 512, 26, 26])
+        # print(features.size())    # torch.Size([batch_size, 512, 26, 26])
         features = self.layer2(features)
-        print(features.size())    # torch.Size([batch_size, 512, 8, 8])
+        # print(features.size())    # torch.Size([batch_size, 512, 8, 8])
         features = self.layer3(features)
-        print(features.size())    # torch.Size([batch_size, 256, 8, 8])
+        # print(features.size())    # torch.Size([batch_size, 256, 8, 8])
         features = self.avgpool(features)
-        print(features.size())    # torch.Size([batch_size, 256, 4, 4])
+        # print(features.size())    # torch.Size([batch_size, 256, 4, 4])
         features = torch.flatten(features, 1)
-        print(features.size())    # torch.Size([batch_size, 256*4*4])
+        # print(features.size())    # torch.Size([batch_size, 256*4*4])
         features = self.linear(features)
-        print(features.size())    # torch.Size([batch_size, 1, 256])
+        # print(features.size())    # torch.Size([batch_size, 1, 256])
 
         return torch.unsqueeze(features, 1)
 
