@@ -17,10 +17,9 @@ from datetime import datetime as dt
 from tensorboardX import SummaryWriter
 from time import time
 
-# from core.test import test_net
+from core.test import test_net
 from models.encoder import Encoder
 from models.decoder import Decoder
-
 from losses.chamfer_loss import ChamferLoss
 from losses.earth_mover_distance import EMD
 
@@ -63,10 +62,11 @@ def train_net(cfg):
                                                     drop_last=True)
     val_data_loader = torch.utils.data.DataLoader(dataset=val_dataset_loader.get_dataset(
                                                   utils.data_loaders.DatasetType.VAL, val_transforms),
-                                                  batch_size=1,
-                                                  num_workers=1,
+                                                  batch_size=cfg.CONST.BATCH_SIZE,
+                                                  num_workers=cfg.TEST.NUM_WORKER,
                                                   pin_memory=True,
-                                                  shuffle=False)
+                                                  shuffle=False,
+                                                  drop_last=True)
 
     # Set up networks
     encoder = Encoder(cfg)
@@ -115,22 +115,22 @@ def train_net(cfg):
 
     # Load pretrained model if exists
     init_epoch = 0
-    best_CD =  10000 # less is better
-    best_EMD =  10000 # less is better
+    # best_CD =  10000 # less is better
+    best_emd =  10000 # less is better
     best_epoch = -1
     if 'WEIGHTS' in cfg.CONST and cfg.TRAIN.RESUME_TRAIN:
         print('[INFO] %s Recovering from %s ...' % (dt.now(), cfg.CONST.WEIGHTS))
         checkpoint = torch.load(cfg.CONST.WEIGHTS)
         init_epoch = checkpoint['epoch_idx']
-        best_CD = checkpoint['least_CD']
-        best_EMD = checkpoint['least_EMD']
-        best_epoch = checkpoint['best_epoch']
+        # best_CD = checkpoint['least_CD']
+        # best_EMD = checkpoint['least_EMD']
+        # best_epoch = checkpoint['best_epoch']
 
         encoder.load_state_dict(checkpoint['encoder_state_dict'])
         decoder.load_state_dict(checkpoint['decoder_state_dict'])
 
-        print('[INFO] %s Recover complete. Current epoch #%d, best CD = %.4f, best EMD = %.4f at epoch #%d.' %
-              (dt.now(), init_epoch, best_CD, best_EMD, best_epoch))
+        print('[INFO] %s Recover complete. Current epoch #%d at epoch #%d.' %
+              (dt.now(), init_epoch, cfg.TRAIN.NUM_EPOCHES))
 
     # Summary writer for TensorBoard
     output_dir = os.path.join(cfg.DIR.OUT_PATH, '%s', dt.now().isoformat())
@@ -198,7 +198,6 @@ def train_net(cfg):
                 '[INFO] %s [Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) REC_Loss = %.4f '
                 % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val,
                    data_time.val, reconstruction_loss.item()))
-            break
 
         # Append epoch loss to TensorBoard
         train_writer.add_scalar('EncoderDecoder/EpochLoss', reconstruction_losses.avg, epoch_idx + 1)
@@ -213,26 +212,30 @@ def train_net(cfg):
               (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, epoch_end_time - epoch_start_time, reconstruction_losses.avg))
 
         # Validate the training models
-        test_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, encoder, decoder)
+        current_emd = test_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, encoder, decoder)
 
         # Save weights to file
         if (epoch_idx + 1) % cfg.TRAIN.SAVE_FREQ == 0:
             if not os.path.exists(ckpt_dir):
                 os.makedirs(ckpt_dir)
 
-            utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'ckpt-epoch-%04d.pth' % (epoch_idx + 1)),
-                                                 epoch_idx + 1, encoder, encoder_solver, decoder, decoder_solver)
+            utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'ckpt-epoch-%04d.pth' % (epoch_idx + 1)), 
+                                                 epoch_idx + 1, 
+                                                 encoder, encoder_solver, decoder, decoder_solver, 
+                                                 best_emd, best_epoch)
         
-
-        """    if iou > best_iou:
+        # Save best check point
+        if current_emd < best_emd:
             if not os.path.exists(ckpt_dir):
                 os.makedirs(ckpt_dir)
 
-            best_iou = iou
+            best_emd = current_emd
             best_epoch = epoch_idx + 1
-            utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'best-ckpt.pth'), epoch_idx + 1, encoder,
-                                                 encoder_solver, decoder, decoder_solver, best_cd, best_epoch)
-        """
+            utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'best-ckpt.pth'), 
+                                                 epoch_idx + 1, 
+                                                 encoder, encoder_solver, decoder, decoder_solver, 
+                                                 best_emd, best_epoch)
+        
     # Close SummaryWriter for TensorBoard
     train_writer.close()
     val_writer.close()

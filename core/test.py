@@ -81,9 +81,12 @@ def test_net(cfg,
     encoder.eval()
     decoder.eval()
     
-    for batch_idx, (taxonomy_names, sample_names, rendering_images,
+    for sample_idx, (taxonomy_names, sample_names, rendering_images,
                     ground_truth_point_clouds) in enumerate(test_data_loader):
         with torch.no_grad():
+            # Only one image per batch
+            rendering_images = torch.squeeze(rendering_images, 1)
+
              # Get data from data loader
             rendering_images = utils.network_utils.var_or_cuda(rendering_images)
             ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
@@ -94,7 +97,7 @@ def test_net(cfg,
             generated_point_clouds = decoder(tree)
             
             # loss computation
-            reconstruction_loss = torch.mean(emd(generated_point_clouds, ground_truth_point_clouds)) 
+            reconstruction_loss = torch.mean(emd(generated_point_clouds, ground_truth_point_clouds))
 
             # Append loss and accuracy to average metrics
             reconstruction_losses.update(reconstruction_loss.item())
@@ -104,17 +107,19 @@ def test_net(cfg,
                 img_dir = output_dir % 'images'
 
                 # Point cloud Visualization
-                g_pc = generated_point_clouds.detach().cpu().numpy()
+                g_pc = generated_point_clouds[0].detach().cpu().numpy()
                 rendering_views = utils.point_cloud_visualization.get_point_cloud_image(g_pc, os.path.join(img_dir, 'test'),
                                                                                         epoch_idx, "reconstruction")
                 test_writer.add_image('Test Sample#%02d/Point Cloud Reconstructed' % sample_idx, rendering_views, epoch_idx)
  
-                gt_pc = ground_truth_point_clouds.detach().cpu().numpy()
+                gt_pc = ground_truth_point_clouds[0].detach().cpu().numpy()
                 rendering_views = utils.point_cloud_visualization.get_point_cloud_image(gt_pc, os.path.join(img_dir, 'test'),
                                                                                         epoch_idx, "ground truth")
                 test_writer.add_image('Test Sample#%02d/Point Cloud GroundTruth' % sample_idx, rendering_views, epoch_idx)
 
     if test_writer is not None:
         test_writer.add_scalar('EncoderDecoder/EpochLoss', reconstruction_losses.avg, epoch_idx)
+
+    return reconstruction_losses.avg
 
 
