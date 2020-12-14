@@ -17,9 +17,7 @@ from tensorboardX import SummaryWriter
 from time import time
 
 from core.test import test_net
-from models.encoder import Encoder
-from models.decoder import Decoder
-from models.STN import STN
+from models.sketch2pointcloud_model import sketch2pointcloud_model
 from losses.chamfer_loss import ChamferLoss
 from losses.earth_mover_distance import EMD
 from losses.transform_loss import feature_transform_regularizer
@@ -70,44 +68,32 @@ def train_net(cfg):
                                                   drop_last=True)
 
     # Set up networks
-    encoder = Encoder(cfg)
-    decoder = Decoder(cfg)
-    stn = STN(cfg)
+    model = sketch2pointcloud_model()
 
-    print('[DEBUG] %s Parameters in Encoder: %d.' % (dt.now(), utils.network_utils.count_parameters(encoder)))
-    print('[DEBUG] %s Parameters in Decoder: %d.' % (dt.now(), utils.network_utils.count_parameters(decoder)))
-    print('[DEBUG] %s Parameters in STN: %d.' % (dt.now(), utils.network_utils.count_parameters(stn)))
+    print('[DEBUG] %s Parameters in model: %d.' % (dt.now(), utils.network_utils.count_parameters(model)))
 
     # Initialize weights of networks
-    encoder.apply(utils.network_utils.init_weights)
-    stn.apply(utils.network_utils.init_weights)
+    model.apply(utils.network_utils.init_weights)
+    # stn.apply(utils.network_utils.init_weights)
     # decoder.apply(utils.network_utils.init_weights) # Something need to change!
 
     # Set up solver
     if cfg.TRAIN.POLICY == 'adam':
-        encoder_solver = torch.optim.Adam(filter(lambda p: p.requires_grad, encoder.parameters()),
+        solver = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),
                                           lr=cfg.TRAIN.ENCODER_LEARNING_RATE,
                                           betas=cfg.TRAIN.BETAS)
-        decoder_solver = torch.optim.Adam(decoder.parameters(),
-                                          lr=cfg.TRAIN.DECODER_LEARNING_RATE,
-                                          betas=cfg.TRAIN.BETAS)
-        stn_solver = torch.optim.Adam(filter(lambda p: p.requires_grad, stn.parameters()),
-                                          lr=cfg.TRAIN.STN_LEARNING_RATE,
-                                          betas=cfg.TRAIN.BETAS)
     elif cfg.TRAIN.POLICY == 'sgd':
-        encoder_solver = torch.optim.SGD(filter(lambda p: p.requires_grad, encoder.parameters()),
+        solver = torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()),
                                          lr=cfg.TRAIN.ENCODER_LEARNING_RATE,
-                                         momentum=cfg.TRAIN.MOMENTUM)
-        decoder_solver = torch.optim.SGD(decoder.parameters(),
-                                         lr=cfg.TRAIN.DECODER_LEARNING_RATE,
-                                         momentum=cfg.TRAIN.MOMENTUM)
-        stn_solver = torch.optim.SGD(filter(lambda p: p.requires_grad, stn.parameters()),
-                                         lr=cfg.TRAIN.STN_LEARNING_RATE,
                                          momentum=cfg.TRAIN.MOMENTUM)
     else:
         raise Exception('[FATAL] %s Unknown optimizer %s.' % (dt.now(), cfg.TRAIN.POLICY))
 
     # Set up learning rate scheduler to decay learning rates dynamically
+    model_lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(encoder_solver,
+                                                              milestones=cfg.TRAIN.ENCODER_LR_MILESTONES,
+                                                              gamma=cfg.TRAIN.GAMMA)
+
     encoder_lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(encoder_solver,
                                                                 milestones=cfg.TRAIN.ENCODER_LR_MILESTONES,
                                                                 gamma=cfg.TRAIN.GAMMA)

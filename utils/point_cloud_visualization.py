@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.linalg import norm
+import cv2
+import os
 
 # Don't delete this line, even if PyCharm says it's an unused import.
 # It is required for projection='3d' in add_subplot()
@@ -10,7 +12,6 @@ def get_point_cloud_image(generate_point_cloud, save_dir, n_itr, img_type):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
     
-    generate_point_cloud = generate_point_cloud.squeeze()
     fig = plot_3d_point_cloud(
             generate_point_cloud[:, 0],
             generate_point_cloud[:, 1],
@@ -20,14 +21,16 @@ def get_point_cloud_image(generate_point_cloud, save_dir, n_itr, img_type):
             title=f"{n_itr} {img_type}"
         )
     
-    save_path = os.path.join(save_dir, 'pcs-%06d.png' % n_itr)
+    save_path = os.path.join(save_dir, 'pcs-%06d %s.png' % (n_itr, img_type))
     fig.savefig(save_path)
     plt.close(fig)
 
+    return cv2.imread(save_path)
+
 
 def plot_3d_point_cloud(x, y, z, show=False, show_axis=True, in_u_sphere=False,
-                        marker='.', s=8, alpha=.8, figsize=(5, 5), elev=10,
-                        azim=240, axis=None, title=None, *args, **kwargs):
+                        marker='.', s=8, alpha=.8, figsize=(5, 5), elev=26,
+                        azim=360-354, axis=None, title=None, *args, **kwargs):
     # plt.switch_backend('tkagg')
     if axis is None:
         fig = plt.figure(figsize=figsize)
@@ -41,6 +44,11 @@ def plot_3d_point_cloud(x, y, z, show=False, show_axis=True, in_u_sphere=False,
 
     sc = ax.scatter(x, y, z, marker=marker, s=s, alpha=alpha, *args, **kwargs)
     ax.view_init(elev=elev, azim=azim)
+    
+    # The image and point cloud has inverse x, y dir order
+    plt.xlabel(' x', fontsize = 12, color = 'black')
+    plt.ylabel(' y', fontsize = 12, color = 'black')
+    # plt.zlabel(' z', fontsize = 12, color = 'black')
 
     if in_u_sphere:
         ax.set_xlim3d(-0.5, 0.5)

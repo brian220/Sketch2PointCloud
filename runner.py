@@ -9,6 +9,7 @@ import multiprocessing as mp
 import numpy as np
 import os
 import sys
+
 # Fix problem: no $DISPLAY environment variable
 matplotlib.use('Agg')
 
@@ -18,7 +19,8 @@ from pprint import pprint
 
 from config import cfg
 from core.train import train_net
-# from core.test import test_net
+from core.test import test_net
+from core.single_img_test import single_img_test_net
 
 
 def get_args_from_command_line():
@@ -64,7 +66,7 @@ def main():
     # Print config
     print('Use config:')
     pprint(cfg)
-
+    
     # Set GPU to use
     if type(cfg.CONST.DEVICE) == str:
         os.environ["CUDA_VISIBLE_DEVICES"] = cfg.CONST.DEVICE
@@ -74,7 +76,7 @@ def main():
         train_net(cfg)
     else:
         if 'WEIGHTS' in cfg.CONST and os.path.exists(cfg.CONST.WEIGHTS):
-            test_net(cfg)
+            single_img_test_net(cfg)
         else:
             print('[FATAL] %s Please specify the file path of checkpoint.' % (dt.now()))
             sys.exit(2)
