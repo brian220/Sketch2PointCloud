@@ -58,21 +58,24 @@ __C.NETWORK.TCONV_USE_BIAS                  = False
 __C.TRAIN                                   = edict()
 __C.TRAIN.RESUME_TRAIN                      = False
 __C.TRAIN.NUM_WORKER                        = 4             # number of data workers
-__C.TRAIN.NUM_EPOCHES                       = 250
+__C.TRAIN.NUM_EPOCHES                       = 1000
 __C.TRAIN.BRIGHTNESS                        = .4
 __C.TRAIN.CONTRAST                          = .4
 __C.TRAIN.SATURATION                        = .4
 __C.TRAIN.NOISE_STD                         = .1
 __C.TRAIN.RANDOM_BG_COLOR_RANGE             = [[225, 255], [225, 255], [225, 255]]
 __C.TRAIN.POLICY                            = 'adam'        # available options: sgd, adam
-__C.TRAIN.ENCODER_LEARNING_RATE             = 1e-3
-__C.TRAIN.DECODER_LEARNING_RATE             = 1e-3
-__C.TRAIN.ENCODER_LR_MILESTONES             = [150]
-__C.TRAIN.DECODER_LR_MILESTONES             = [150]
+__C.TRAIN.ENCODER_LEARNING_RATE             = 5e-4
+__C.TRAIN.DECODER_LEARNING_RATE             = 5e-4
+__C.TRAIN.STN_LEARNING_RATE                 = 5e-4
+__C.TRAIN.ENCODER_LR_MILESTONES             = [200]
+__C.TRAIN.DECODER_LR_MILESTONES             = [200]
+__C.TRAIN.STN_LR_MILESTONES                 = [200]
 __C.TRAIN.BETAS                             = (.9, .999)
 __C.TRAIN.MOMENTUM                          = .9
 __C.TRAIN.GAMMA                             = .5
 __C.TRAIN.SAVE_FREQ                         = 10            # weights will be overwritten every save_freq epoch
+__C.TRAIN.TRANS_LAMDA                       = 10
 
 
 #
@@ -81,3 +84,4 @@ __C.TRAIN.SAVE_FREQ                         = 10            # weights will be ov
 __C.TEST                                    = edict()
 __C.TEST.RANDOM_BG_COLOR_RANGE              = [[240, 240], [240, 240], [240, 240]]
 __C.TEST.VOXEL_THRESH                       = [.2, .3, .4, .5]
+__C.TEST.NUM_WORKER                         = 4             # number of data workers
