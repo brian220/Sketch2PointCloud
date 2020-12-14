@@ -55,6 +55,7 @@ class Encoder(torch.nn.Module):
     
     def forward(self, rendering_image):
         features = self.vgg(rendering_image)
+        vgg_features = features
         # print(features.size())    # torch.Size([batch_size, 512, 28, 28])
         features = self.layer1(features)
         # print(features.size())    # torch.Size([batch_size, 512, 26, 26])
@@ -69,5 +70,5 @@ class Encoder(torch.nn.Module):
         features = self.linear(features)
         # print(features.size())    # torch.Size([batch_size, 1, 256])
 
-        return torch.unsqueeze(features, 1)
+        return vgg_features, torch.unsqueeze(features, 1)
 
