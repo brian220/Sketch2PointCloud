@@ -19,7 +19,6 @@ from time import time
 from core.test import test_net
 from models.encoder import Encoder
 from models.decoder import Decoder
-from models.STN import STN
 from losses.chamfer_loss import ChamferLoss
 from losses.earth_mover_distance import EMD
 from losses.transform_loss import feature_transform_regularizer
@@ -72,15 +71,12 @@ def train_net(cfg):
     # Set up networks
     encoder = Encoder(cfg)
     decoder = Decoder(cfg)
-    stn = STN(cfg)
 
     print('[DEBUG] %s Parameters in Encoder: %d.' % (dt.now(), utils.network_utils.count_parameters(encoder)))
     print('[DEBUG] %s Parameters in Decoder: %d.' % (dt.now(), utils.network_utils.count_parameters(decoder)))
-    print('[DEBUG] %s Parameters in STN: %d.' % (dt.now(), utils.network_utils.count_parameters(stn)))
 
     # Initialize weights of networks
     encoder.apply(utils.network_utils.init_weights)
-    stn.apply(utils.network_utils.init_weights)
     # decoder.apply(utils.network_utils.init_weights) # Something need to change!
 
     # Set up solver
@@ -91,18 +87,12 @@ def train_net(cfg):
         decoder_solver = torch.optim.Adam(decoder.parameters(),
                                           lr=cfg.TRAIN.DECODER_LEARNING_RATE,
                                           betas=cfg.TRAIN.BETAS)
-        stn_solver = torch.optim.Adam(filter(lambda p: p.requires_grad, stn.parameters()),
-                                          lr=cfg.TRAIN.STN_LEARNING_RATE,
-                                          betas=cfg.TRAIN.BETAS)
     elif cfg.TRAIN.POLICY == 'sgd':
         encoder_solver = torch.optim.SGD(filter(lambda p: p.requires_grad, encoder.parameters()),
                                          lr=cfg.TRAIN.ENCODER_LEARNING_RATE,
                                          momentum=cfg.TRAIN.MOMENTUM)
         decoder_solver = torch.optim.SGD(decoder.parameters(),
                                          lr=cfg.TRAIN.DECODER_LEARNING_RATE,
-                                         momentum=cfg.TRAIN.MOMENTUM)
-        stn_solver = torch.optim.SGD(filter(lambda p: p.requires_grad, stn.parameters()),
-                                         lr=cfg.TRAIN.STN_LEARNING_RATE,
                                          momentum=cfg.TRAIN.MOMENTUM)
     else:
         raise Exception('[FATAL] %s Unknown optimizer %s.' % (dt.now(), cfg.TRAIN.POLICY))
@@ -114,15 +104,10 @@ def train_net(cfg):
     decoder_lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(decoder_solver,
                                                                 milestones=cfg.TRAIN.DECODER_LR_MILESTONES,
                                                                 gamma=cfg.TRAIN.GAMMA)
-    stn_lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(stn_solver,
-                                                            milestones=cfg.TRAIN.STN_LR_MILESTONES,
-                                                            gamma=cfg.TRAIN.GAMMA)
-    
     
     if torch.cuda.is_available():
         encoder = torch.nn.DataParallel(encoder).cuda()
         decoder = torch.nn.DataParallel(decoder).cuda()
-        stn = torch.nn.DataParallel(stn).cuda()
 
     # Set up loss functions
     chamfer = ChamferLoss().cuda()
@@ -163,13 +148,12 @@ def train_net(cfg):
         batch_time = utils.network_utils.AverageMeter()
         data_time = utils.network_utils.AverageMeter()
         reconstruction_losses = utils.network_utils.AverageMeter()
-        transformation_losses = utils.network_utils.AverageMeter()
-        total_losses = utils.network_utils.AverageMeter()
+        view_losses = utils.network_utils.AverageMeter()
 
         # switch models to training mode
         encoder.train()
         decoder.train()
-        stn.train()
+        view_estimator.train()
 
         batch_end_time = time()
         n_batches = len(train_data_loader)
@@ -185,72 +169,81 @@ def train_net(cfg):
             # Get data from data loader
             rendering_images = utils.network_utils.var_or_cuda(rendering_images)
             ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
-            
-            # train the transformation matrix (STN) 
-            transformation = stn(rendering_images)
 
-            # Train the encoder, decoder, refiner, and merger
-            image_features = encoder(rendering_images)
-            tree = [image_features]
-            generated_point_clouds = decoder(tree)
+            #=================================================#
+            #           Train the encoder, decoder            #
+            #=================================================#
+            vgg_features, image_code = encoder(rendering_images)
+            image_code = [image_code]
+            generated_point_clouds = decoder(image_code)
             
-            # generated_point_clouds (batch size, 2048, 3) => a batch of [2048*3] matrixs
-            normalized_point_clouds = torch.bmm(generated_point_clouds, transformation)
-
             # loss computation
             reconstruction_loss = torch.mean(emd(normalized_point_clouds, ground_truth_point_clouds))
-            transformation_loss = feature_transform_regularizer(transformation)
-
-            total_loss = reconstruction_loss + cfg.TRAIN.TRANS_LAMDA * transformation_loss
 
             # Gradient decent
             encoder.zero_grad()
             decoder.zero_grad()
-            stn.zero_grad()
             
-            total_loss.backward()
+            reconstruction_loss.backward()
 
             encoder_solver.step()
             decoder_solver.step()
-            stn_solver.step()
             
+            #=================================================#
+            #          Train the view estimater               #
+            #=================================================#
+            cls_azi, cls_ele, reg_azi, reg_ele= view_estimator(vgg_features)
+
+            # loss computation
+            loss_cls_azi = criterion_cls_azi(cls_azi, ground_truth_view[:, 0])
+            loss_cls_ele = criterion_cls_ele(cls_ele, ground_truth_view[:, 1])
+            loss_reg = criterion_reg(reg_azi, reg_ele, ground_truth_view.float())
+            view_loss = loss_cls_azi + loss_cls_ele + loss_reg
+            
+            # Gradient decent
+            view_estimator.zero_grad()
+
+            view_loss.backward()
+            
+            view_estimator.step()
+
+            #=================================================#
+            #              Show result                        #
+            #=================================================#
             reconstruction_losses.update(reconstruction_loss.item())
-            transformation_losses.update(transformation_loss.item())
-            total_losses.update(total_loss.item())
+            view_losses.update(view_loss.item())
 
             # Append loss to TensorBoard
             n_itr = epoch_idx * n_batches + batch_idx
             train_writer.add_scalar('EncoderDecoder/BatchLoss_Rec', reconstruction_loss.item(), n_itr)
-            train_writer.add_scalar('EncoderDecoder/BatchLoss_Trans', transformation_loss.item(), n_itr)
-            train_writer.add_scalar('EncoderDecoder/BatchLoss_Total', total_loss.item(), n_itr)
+            train_writer.add_scalar('EncoderDecoder/BatchLoss_View', view_loss.item(), n_itr)
             
             # Tick / tock
             batch_time.update(time() - batch_end_time)
             batch_end_time = time()
             print(
                 '[INFO] %s [Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) \
-                 REC_Loss = %.4f TRANS_Loss =  %.4f TOTAL_Loss =  %.4f'
+                 REC_Loss = %.4f VIEW_Loss =  %.4f'
                 % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val,
-                   data_time.val, reconstruction_loss.item(), transformation_loss.item(), total_loss.item()))
+                   data_time.val, reconstruction_loss.item(), view_loss.item()))
 
         # Append epoch loss to TensorBoard
         train_writer.add_scalar('EncoderDecoder/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)
-        train_writer.add_scalar('EncoderDecoder/EpochLoss_Trans', transformation_losses.avg, epoch_idx + 1)
-        train_writer.add_scalar('EncoderDecoder/EpochLoss_Total', total_losses.avg, epoch_idx + 1)
-
+        train_writer.add_scalar('EncoderDecoder/EpochLoss_View', view_losses.avg, epoch_idx + 1)
+        
         # Adjust learning rate
         encoder_lr_scheduler.step()
         decoder_lr_scheduler.step()
-        stn_lr_scheduler.step()
+        view_estimator_lr_scheduler.step()
 
         # Tick / tock
         epoch_end_time = time()
-        print('[INFO] %s Epoch [%d/%d] EpochTime = %.3f (s) REC_Loss = %.4f TRANS_Loss =  %.4f TOTAL_Loss =  %.4f' %
+        print('[INFO] %s Epoch [%d/%d] EpochTime = %.3f (s) REC_Loss = %.4f VIEW_Loss =  %.4f' %
               (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, epoch_end_time - epoch_start_time, 
-              reconstruction_losses.avg, transformation_losses.avg, total_losses.avg))
+              reconstruction_losses.avg, view_losses.avg))
 
         # Validate the training models
-        current_emd = test_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, encoder, decoder, stn)
+        current_emd, current_view_loss = test_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, encoder, decoder, view_estimator)
 
         # Save weights to file
         if (epoch_idx + 1) % cfg.TRAIN.SAVE_FREQ == 0:
@@ -259,19 +252,31 @@ def train_net(cfg):
 
             utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'ckpt-epoch-%04d.pth' % (epoch_idx + 1)), 
                                                  epoch_idx + 1, 
-                                                 encoder, encoder_solver, decoder, decoder_solver, stn, stn_solver,
+                                                 encoder, encoder_solver, decoder, decoder_solver, view_estimator, view_estimator_solver,
                                                  best_emd, best_epoch)
         
-        # Save best check point
+        # Save best check point for emd
         if current_emd < best_emd:
             if not os.path.exists(ckpt_dir):
                 os.makedirs(ckpt_dir)
 
             best_emd = current_emd
             best_epoch = epoch_idx + 1
-            utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'best-ckpt.pth'), 
+            utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'best-reconstruction-ckpt.pth'), 
                                                  epoch_idx + 1, 
-                                                 encoder, encoder_solver, decoder, decoder_solver, stn, stn_solver,
+                                                 encoder, encoder_solver, decoder, decoder_solver, view_estimator, view_estimator_solver,
+                                                 best_emd, best_epoch)
+        
+        # Save best check point for view
+        if current_view_loss < best_view_loss:
+            if not os.path.exists(ckpt_dir):
+                os.makedirs(ckpt_dir)
+
+            best_emd = current_emd
+            best_epoch = epoch_idx + 1
+            utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'best-view-ckpt.pth'), 
+                                                 epoch_idx + 1, 
+                                                 encoder, encoder_solver, decoder, decoder_solver, view_estimator, view_estimator_solver,
                                                  best_emd, best_epoch)
         
     # Close SummaryWriter for TensorBoard

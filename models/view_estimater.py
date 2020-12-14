@@ -37,5 +37,5 @@ class ViewEstimater(torch.nn.Module):
 
         reg_azi = self.fc_reg_azi(x)
         reg_ele = self.fc_reg_ele(x)
-        return [cls_azi, cls_ele, reg_azi, reg_ele]
+        return cls_azi, cls_ele, reg_azi, reg_ele
         
