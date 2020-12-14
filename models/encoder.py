@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 #
-# Developed by Haozhe Xie <cshzxie@gmail.com>
+# Developed by Chao Yu Huang <b608390@gmail.com>
 #
 # References:
+# - https://github.com/hzxie/Pix2Vox/blob/master/models/encoder.py
 # - https://github.com/shawnxu1318/MVCNN-Multi-View-Convolutional-Neural-Networks/blob/master/mvcnn.py
 
 import torch
