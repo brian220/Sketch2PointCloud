@@ -20,9 +20,11 @@ from core.test import test_net
 from models.encoder import Encoder
 from models.decoder import Decoder
 from models.view_estimator import ViewEstimater
+
 from losses.chamfer_loss import ChamferLoss
 from losses.earth_mover_distance import EMD
-from losses.transform_loss import feature_transform_regularizer
+from losses.cross_entropy_loss import CELoss
+from losses.cross_delta_loss import DeltaLoss
 
 def train_net(cfg):
     print("cuda is available?", torch.cuda.is_available())
@@ -72,7 +74,9 @@ def train_net(cfg):
     # Set up networks
     encoder = Encoder(cfg)
     decoder = Decoder(cfg)
-    view_estimator = ViewEstimater(cfg)
+
+    azi_classes, ele_classes = int(360 / cfg.CONST.BIN_SIZE), int(180 / cfg.CONST.BIN_SIZE)
+    view_estimator = ViewEstimater(cfg, azi_classes=azi_classes, ele_classes=ele_classes)
 
     print('[DEBUG] %s Parameters in Encoder: %d.' % (dt.now(), utils.network_utils.count_parameters(encoder)))
     print('[DEBUG] %s Parameters in Decoder: %d.' % (dt.now(), utils.network_utils.count_parameters(decoder)))
@@ -164,6 +168,9 @@ def train_net(cfg):
         batch_time = utils.network_utils.AverageMeter()
         data_time = utils.network_utils.AverageMeter()
         reconstruction_losses = utils.network_utils.AverageMeter()
+        cls_azi_losses = utils.network_utils.AverageMeter()
+        cls_ele_losses = utils.network_utils.AverageMeter()
+        reg_losses = utils.network_utils.AverageMeter()
         view_losses = utils.network_utils.AverageMeter()
 
         # switch models to training mode
@@ -228,12 +235,15 @@ def train_net(cfg):
             #              Show result                        #
             #=================================================#
             reconstruction_losses.update(reconstruction_loss.item())
+            cls_azi_losses.update(loss_cls_azi.item())
+            cls_ele_losses.update(loss_cls_ele.item())
+            reg_losses.update(loss_reg.item())
             view_losses.update(view_loss.item())
 
             # Append loss to TensorBoard
-            n_itr = epoch_idx * n_batches + batch_idx
-            train_writer.add_scalar('EncoderDecoder/BatchLoss_Rec', reconstruction_loss.item(), n_itr)
-            train_writer.add_scalar('EncoderDecoder/BatchLoss_View', view_loss.item(), n_itr)
+            # n_itr = epoch_idx * n_batches + batch_idx
+            # train_writer.add_scalar('EncoderDecoder/BatchLoss_Rec', reconstruction_loss.item(), n_itr)
+            # train_writer.add_scalar('EncoderDecoder/BatchLoss_View', view_loss.item(), n_itr)
             
             # Tick / tock
             batch_time.update(time() - batch_end_time)
@@ -246,6 +256,9 @@ def train_net(cfg):
 
         # Append epoch loss to TensorBoard
         train_writer.add_scalar('EncoderDecoder/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)
+        train_writer.add_scalar('EncoderDecoder/EpochLoss_Cls_azi', cls_azi_losses.avg, epoch_idx + 1)
+        train_writer.add_scalar('EncoderDecoder/EpochLoss_Cls_ele', cls_ele_losses.avg, epoch_idx + 1)
+        train_writer.add_scalar('EncoderDecoder/EpochLoss_Reg', reg_losses.avg, epoch_idx + 1)
         train_writer.add_scalar('EncoderDecoder/EpochLoss_View', view_losses.avg, epoch_idx + 1)
         
         # Adjust learning rate

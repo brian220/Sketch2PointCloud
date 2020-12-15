@@ -18,11 +18,12 @@ from datetime import datetime as dt
 
 from models.encoder import Encoder
 from models.decoder import Decoder
-from models.STN import STN
+from models.view_estimator import ViewEstimater
 
 from losses.chamfer_loss import ChamferLoss
 from losses.earth_mover_distance import EMD
-from losses.transform_loss import feature_transform_regularizer
+from losses.cross_entropy_loss import CELoss
+from losses.cross_delta_loss import DeltaLoss
 
 def test_net(cfg,
              epoch_idx=-1,
@@ -31,7 +32,7 @@ def test_net(cfg,
              test_writer=None,
              encoder=None,
              decoder=None,
-             stn=None):
+             view_estimator=None):
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
     torch.backends.cudnn.benchmark = True
 
@@ -75,21 +76,28 @@ def test_net(cfg,
 
     # Set up loss functions
     emd = EMD().cuda()
+    criterion_cls_azi = CELoss(360)
+    criterion_cls_ele = CELoss(180)
+    criterion_reg = DeltaLoss(cfg.CONST.BIN_SIZE)
 
     # Testing loop
     n_samples = len(test_data_loader)
     test_iou = dict()
     reconstruction_losses = utils.network_utils.AverageMeter()
-    transformation_losses = utils.network_utils.AverageMeter()
-    total_losses = utils.network_utils.AverageMeter()
+
+    cls_azi_losses = utils.network_utils.AverageMeter()
+    cls_ele_losses = utils.network_utils.AverageMeter()
+    cls_azi_losses = utils.network_utils.AverageMeter()
+    reg_losses = utils.network_utils.AverageMeter()
+    view_losses = utils.network_utils.AverageMeter()
 
     # Switch models to evaluation mode
     encoder.eval()
     decoder.eval()
-    stn.eval()
+    view_estimator.eval()
     
     for sample_idx, (taxonomy_names, sample_names, rendering_images,
-                    ground_truth_point_clouds) in enumerate(test_data_loader):
+                    ground_truth_point_clouds, ground_truth_views) in enumerate(test_data_loader):
         with torch.no_grad():
             # Only one image per sample
             rendering_images = torch.squeeze(rendering_images, 1)
@@ -97,53 +105,60 @@ def test_net(cfg,
              # Get data from data loader
             rendering_images = utils.network_utils.var_or_cuda(rendering_images)
             ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
+            ground_truth_views = utils.network_utils.var_or_cuda(ground_truth_views)
             
-            # test the transformation matrix (STN) 
-            transformation = stn(rendering_images)
-
-            # Test the encoder, decoder
+            #=================================================#
+            #           Train the encoder, decoder            #
+            #=================================================#
             image_features = encoder(rendering_images)
             tree = [image_features]
             generated_point_clouds = decoder(tree)
 
-            normalized_point_clouds = torch.bmm(generated_point_clouds, transformation)
-            
             # loss computation
             reconstruction_loss = torch.mean(emd(normalized_point_clouds, ground_truth_point_clouds))
-            transformation_loss = feature_transform_regularizer(transformation)
+            
+            #=================================================#
+            #          Train the view estimater               #
+            #=================================================#
+            cls_azi, cls_ele, reg_azi, reg_ele= view_estimator(vgg_features)
 
-            total_loss = reconstruction_loss + cfg.TRAIN.TRANS_LAMDA * transformation_loss
+            # loss computation
+            loss_cls_azi = criterion_cls_azi(cls_azi, ground_truth_views[:, 0])
+            loss_cls_ele = criterion_cls_ele(cls_ele, ground_truth_views[:, 1])
+            loss_reg = criterion_reg(reg_azi, reg_ele, ground_truth_view.float())
+            view_loss = loss_cls_azi + loss_cls_ele + loss_reg
 
             # Append loss and accuracy to average metrics
             reconstruction_losses.update(reconstruction_loss.item())
-            transformation_losses.update(transformation_loss.item())
-            total_losses.update(total_loss.item())
+            cls_azi_losses.update(loss_cls_azi.item())
+            cls_ele_losses.update(loss_cls_ele.item())
+            reg_losses.update(loss_reg.item())
+            view_losses.update(view_loss.item())
 
             # Append generated point clouds to TensorBoard
             if output_dir and sample_idx < 3:
                 img_dir = output_dir % 'images'
-                
+                # image Visualization
+
+
                 # Point cloud Visualization
                 g_pc = generated_point_clouds[0].detach().cpu().numpy()
                 rendering_views = utils.point_cloud_visualization.get_point_cloud_image(g_pc, os.path.join(img_dir, 'test'),
-                                                                                        epoch_idx, "reconstruction")
+                                                                                        epoch_idx, "reconstruction", )
                 test_writer.add_image('Test Sample#%02d/Point Cloud Reconstructed' % sample_idx, rendering_views, epoch_idx)
 
-                n_pc = normalized_point_clouds[0].detach().cpu().numpy()
-                rendering_views = utils.point_cloud_visualization.get_point_cloud_image(n_pc, os.path.join(img_dir, 'test'),
-                                                                                        epoch_idx, "normalize")
-                test_writer.add_image('Test Sample#%02d/Point Cloud Normalized' % sample_idx, rendering_views, epoch_idx)
- 
                 gt_pc = ground_truth_point_clouds[0].detach().cpu().numpy()
                 rendering_views = utils.point_cloud_visualization.get_point_cloud_image(gt_pc, os.path.join(img_dir, 'test'),
                                                                                         epoch_idx, "ground truth")
                 test_writer.add_image('Test Sample#%02d/Point Cloud GroundTruth' % sample_idx, rendering_views, epoch_idx)
 
     if test_writer is not None:
-        test_writer.add_scalar('EncoderDecoder/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx)
-        test_writer.add_scalar('EncoderDecoder/EpochLoss_Trans', transformation_losses.avg, epoch_idx)
-        test_writer.add_scalar('EncoderDecoder/EpochLoss_Total', total_losses.avg, epoch_idx)
+        test_writer.add_scalar('EncoderDecoder/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)
+        test_writer.add_scalar('EncoderDecoder/EpochLoss_Cls_azi', cls_azi_losses.avg, epoch_idx + 1)
+        test_writer.add_scalar('EncoderDecoder/EpochLoss_Cls_ele', cls_ele_losses.avg, epoch_idx + 1)
+        test_writer.add_scalar('EncoderDecoder/EpochLoss_Reg', reg_losses.avg, epoch_idx + 1)
+        test_writer.add_scalar('EncoderDecoder/EpochLoss_View', view_losses.avg, epoch_idx + 1)
 
-    return reconstruction_losses.avg
+    return reconstruction_losses.avg, view_losses.avg
 
 
