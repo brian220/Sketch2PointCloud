@@ -91,7 +91,7 @@ def test_net(cfg,
     for sample_idx, (taxonomy_names, sample_names, rendering_images,
                     ground_truth_point_clouds) in enumerate(test_data_loader):
         with torch.no_grad():
-            # Only one image per batch
+            # Only one image per sample
             rendering_images = torch.squeeze(rendering_images, 1)
           
              # Get data from data loader

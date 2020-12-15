@@ -8,17 +8,20 @@ import os
 # It is required for projection='3d' in add_subplot()
 from mpl_toolkits.mplot3d import Axes3D
 
-def get_point_cloud_image(generate_point_cloud, save_dir, n_itr, img_type):
+def get_point_cloud_image(generate_point_cloud, save_dir, n_itr, img_type, view):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
     
+    # Plot the pc according to view (azimuth, elevation)
     fig = plot_3d_point_cloud(
             generate_point_cloud[:, 0],
             generate_point_cloud[:, 1],
             generate_point_cloud[:, 2],
             in_u_sphere=True,
             show=False,
-            title=f"{n_itr} {img_type}"
+            title=f"{n_itr} {img_type}",
+            elev=view[1],
+            azim=360-view[0]
         )
     
     save_path = os.path.join(save_dir, 'pcs-%06d %s.png' % (n_itr, img_type))

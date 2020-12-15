@@ -42,25 +42,29 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         return len(self.file_list)
 
     def __getitem__(self, idx):
-        taxonomy_name, sample_name, rendering_images, point_cloud = self.get_datum(idx)
+        taxonomy_name, sample_name, rendering_images, point_cloud, ground_truth_view = self.get_datum(idx)
 
         if self.transforms:
             rendering_images = self.transforms(rendering_images)
 
-        return taxonomy_name, sample_name, rendering_images, point_cloud
+        return taxonomy_name, sample_name, rendering_images, point_cloud, ground_truth_view
 
     def get_datum(self, idx):
         taxonomy_name = self.file_list[idx]['taxonomy_name']
         sample_name = self.file_list[idx]['sample_name']
         rendering_image_paths = self.file_list[idx]['rendering_images']
         point_cloud_path = self.file_list[idx]['point_cloud']
+        views = self.file_list[idx]['views']
 
         # get data of rendering images (sample 1 image from paths)
         if self.dataset_type == DatasetType.TRAIN:
-            selected_rendering_image_path = rendering_image_paths[random.randint(0, len(rendering_image_paths) - 1)]
+            rand_id = random.randint(0, len(rendering_image_paths) - 1)
+            selected_rendering_image_path = rendering_image_paths[rand_id]
+            selected_view = views[rand_id]
         else:
         # test, valid with the first image
             selected_rendering_image_path = rendering_image_paths[1]
+            selected_view = views[1]
         
         # read the test, train image
         # print(selected_rendering_image_path)
@@ -71,7 +75,7 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
                      (dt.now(), image_path))
             sys.exit(2)
         rendering_images.append(rendering_image)
-
+    
         # get data of point cloud
         _, suffix = os.path.splitext(point_cloud_path)
 
@@ -79,7 +83,7 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
             point_cloud = PyntCloud.from_file(point_cloud_path)
             point_cloud = np.array(point_cloud.points)
 
-        return taxonomy_name, sample_name, np.asarray(rendering_images), point_cloud
+        return taxonomy_name, sample_name, np.asarray(rendering_images), point_cloud, np.asarray(selected_view)
 
 
 # //////////////////////////////// = End of ShapeNetDataset Class Definition = ///////////////////////////////// #
@@ -90,6 +94,7 @@ class ShapeNetDataLoader:
         self.dataset_taxonomy = None
         self.rendering_image_path_template = cfg.DATASETS.SHAPENET.RENDERING_PATH
         self.point_cloud_path_template = cfg.DATASETS.SHAPENET.POINT_CLOUD_PATH
+        self.view_path_template = cfg.DATASETS.SHAPENET.VIEW_PATH
         self.class_name = cfg.DATASET.CLASS
 
         # Load all taxonomies of the dataset
@@ -144,6 +149,25 @@ class ShapeNetDataLoader:
                 print('[WARN] %s Ignore sample %s/%s since image files not exists.' %
                       (dt.now(), taxonomy_folder_name, sample_name))
                 continue
+             
+            # Get views of objects (azimuth, elevation)
+            view_path = self.view_path_template % (taxonomy_folder_name, sample_name)
+            if not os.path.exists(view_path):
+                print('[WARN] %s Ignore sample %s/%s since view file not exists.' %
+                      (dt.now(), taxonomy_folder_name, sample_name))
+                continue
+
+            lines = []
+            with open(view_path) as f:
+                lines = f.readlines()
+            
+            views = []
+            for view in lines:
+                view = view.split()
+                # get first two (azimuth, elevation)
+                view = view[:2]
+                view = [round(float(item)) for item in view]
+                views.append(view)
 
             # Append to the list of rendering images
             files_of_taxonomy.append({
@@ -151,12 +175,13 @@ class ShapeNetDataLoader:
                 'sample_name': sample_name,
                 'rendering_images': rendering_images_file_paths,
                 'point_cloud': point_cloud_file_path,
+                'views': views
             })
 
             # Report the progress of reading dataset
             # if sample_idx % 500 == 499 or sample_idx == n_samples - 1:
             #     print('[INFO] %s Collecting %d of %d' % (dt.now(), sample_idx + 1, n_samples))
-
+            
         return files_of_taxonomy
 
 

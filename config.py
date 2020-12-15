@@ -14,7 +14,8 @@ __C.DATASETS                                = edict()
 __C.DATASETS.SHAPENET                       = edict()
 __C.DATASETS.SHAPENET.TAXONOMY_FILE_PATH    = './datasets/rec.json'
 __C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/itri/Files_2TB/chaoyu/pointcloud3d/dataset/ShapeNetRendering_copy/%s/%s/rendering/%02d.png'
-__C.DATASETS.SHAPENET.POINT_CLOUD_PATH       = '/media/itri/Files_2TB/chaoyu/pointcloud3d/dataset/shape_net_core_uniform_samples_2048/%s/%s.ply'
+__C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/itri/Files_2TB/chaoyu/pointcloud3d/dataset/shape_net_core_uniform_samples_2048/%s/%s.ply'
+__C.DATASETS.SHAPENET.VIEW_PATH             = '/media/itri/Files_2TB/chaoyu/pointcloud3d/dataset/ShapeNetRendering_copy/%s/%s/rendering/rendering_metadata.txt'
 
 #
 # Dataset
@@ -37,6 +38,7 @@ __C.CONST.IMG_H                             = 224       # Image height for input
 __C.CONST.BATCH_SIZE                        = 64
 __C.CONST.CROP_IMG_W                        = 128       # Dummy property for Pascal 3D
 __C.CONST.CROP_IMG_H                        = 128       # Dummy property for Pascal 3D
+__C.CONST.BIN_SIZE                          = 15
 
 #
 # Directories
@@ -67,6 +69,7 @@ __C.TRAIN.RANDOM_BG_COLOR_RANGE             = [[225, 255], [225, 255], [225, 255
 __C.TRAIN.POLICY                            = 'adam'        # available options: sgd, adam
 __C.TRAIN.ENCODER_LEARNING_RATE             = 5e-4
 __C.TRAIN.DECODER_LEARNING_RATE             = 5e-4
+__C.TRAIN.VIEW_ESTIMATOR_LEARNING_RATE      = 5e-4
 __C.TRAIN.STN_LEARNING_RATE                 = 5e-4
 __C.TRAIN.ENCODER_LR_MILESTONES             = [200]
 __C.TRAIN.DECODER_LR_MILESTONES             = [200]

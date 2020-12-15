@@ -2,6 +2,7 @@ import torch.nn as nn
 import torch
 CE = nn.CrossEntropyLoss().cuda()
 
+
 def cross_entropy_loss(pred, target, range):
     binSize = range // pred.size(1)
     trueLabel = target // binSize

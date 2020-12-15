@@ -3,7 +3,7 @@ import torch
 
 Huber = nn.SmoothL1Loss().cuda()
 
-def delta_loss(pred_azi, pred_ele, pred_rol, target, bin):
+def delta_loss(pred_azi, pred_ele, target, bin):
     # compute the ground truth delta value according to angle value and bin size
     target_delta = ((target % bin) / bin) - 0.5
 
@@ -11,8 +11,7 @@ def delta_loss(pred_azi, pred_ele, pred_rol, target, bin):
     target_label = (target // bin).long()
     delta_azi = pred_azi[torch.arange(pred_azi.size(0)), target_label[:, 0]].tanh() / 2
     delta_ele = pred_ele[torch.arange(pred_ele.size(0)), target_label[:, 1]].tanh() / 2
-    delta_rol = pred_rol[torch.arange(pred_rol.size(0)), target_label[:, 2]].tanh() / 2
-    pred_delta = torch.cat((delta_azi.unsqueeze(1), delta_ele.unsqueeze(1), delta_rol.unsqueeze(1)), 1)
+    pred_delta = torch.cat((delta_azi.unsqueeze(1), delta_ele.unsqueeze(1), 1)
 
     return Huber(5. * pred_delta, 5. * target_delta)
 
@@ -23,5 +22,5 @@ class DeltaLoss(nn.Module):
         self.__bin__ = bin
         return
 
-    def forward(self, pred_azi, pred_ele, pred_rol, target):
-        return delta_loss(pred_azi, pred_ele, pred_rol, target, self.__bin__)
+    def forward(self, pred_azi, pred_ele, target):
+        return delta_loss(pred_azi, pred_ele, target, self.__bin__)

@@ -19,6 +19,7 @@ from time import time
 from core.test import test_net
 from models.encoder import Encoder
 from models.decoder import Decoder
+from models.view_estimator import ViewEstimater
 from losses.chamfer_loss import ChamferLoss
 from losses.earth_mover_distance import EMD
 from losses.transform_loss import feature_transform_regularizer
@@ -39,8 +40,8 @@ def train_net(cfg):
         utils.data_transforms.ColorJitter(cfg.TRAIN.BRIGHTNESS, cfg.TRAIN.CONTRAST, cfg.TRAIN.SATURATION),
         utils.data_transforms.RandomNoise(cfg.TRAIN.NOISE_STD),
         utils.data_transforms.Normalize(mean=cfg.DATASET.MEAN, std=cfg.DATASET.STD),
-        utils.data_transforms.RandomFlip(),
-        utils.data_transforms.RandomPermuteRGB(),
+        # utils.data_transforms.RandomFlip(), # Disable the random flip to avoid problem in view estimation
+        # utils.data_transforms.RandomPermuteRGB(), # Sketch data is gray scale image, no need to permute RGB
         utils.data_transforms.ToTensor(),
     ])
     val_transforms = utils.data_transforms.Compose([
@@ -71,9 +72,11 @@ def train_net(cfg):
     # Set up networks
     encoder = Encoder(cfg)
     decoder = Decoder(cfg)
+    view_estimator = ViewEstimater(cfg)
 
     print('[DEBUG] %s Parameters in Encoder: %d.' % (dt.now(), utils.network_utils.count_parameters(encoder)))
     print('[DEBUG] %s Parameters in Decoder: %d.' % (dt.now(), utils.network_utils.count_parameters(decoder)))
+    print('[DEBUG] %s Parameters in View Estimator: %d.' % (dt.now(), utils.network_utils.count_parameters(view_estimator)))
 
     # Initialize weights of networks
     encoder.apply(utils.network_utils.init_weights)
@@ -87,12 +90,18 @@ def train_net(cfg):
         decoder_solver = torch.optim.Adam(decoder.parameters(),
                                           lr=cfg.TRAIN.DECODER_LEARNING_RATE,
                                           betas=cfg.TRAIN.BETAS)
+        view_estimator_solver = torch.optim.Adam(view_estimator.parameters(),
+                                          lr=cfg.TRAIN.VIEW_ESTIMATOR_LEARNING_RATE,
+                                          betas=cfg.TRAIN.BETAS)
     elif cfg.TRAIN.POLICY == 'sgd':
         encoder_solver = torch.optim.SGD(filter(lambda p: p.requires_grad, encoder.parameters()),
                                          lr=cfg.TRAIN.ENCODER_LEARNING_RATE,
                                          momentum=cfg.TRAIN.MOMENTUM)
         decoder_solver = torch.optim.SGD(decoder.parameters(),
                                          lr=cfg.TRAIN.DECODER_LEARNING_RATE,
+                                         momentum=cfg.TRAIN.MOMENTUM)
+        view_estimator_solver = torch.optim.SGD(view_estimator.parameters(),
+                                         lr=cfg.TRAIN.VIEW_ESTIMATOR_LEARNING_RATE,
                                          momentum=cfg.TRAIN.MOMENTUM)
     else:
         raise Exception('[FATAL] %s Unknown optimizer %s.' % (dt.now(), cfg.TRAIN.POLICY))
@@ -104,19 +113,26 @@ def train_net(cfg):
     decoder_lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(decoder_solver,
                                                                 milestones=cfg.TRAIN.DECODER_LR_MILESTONES,
                                                                 gamma=cfg.TRAIN.GAMMA)
-    
+    view_estimator_lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(view_estimator_solver,
+                                                                milestones=cfg.TRAIN.DECODER_LR_MILESTONES,
+                                                                gamma=cfg.TRAIN.GAMMA)
     if torch.cuda.is_available():
         encoder = torch.nn.DataParallel(encoder).cuda()
         decoder = torch.nn.DataParallel(decoder).cuda()
+        view_estimator = torch.nn.DataParallel(view_estimator).cuda()
 
     # Set up loss functions
     chamfer = ChamferLoss().cuda()
     emd = EMD().cuda()
+    criterion_cls_azi = CELoss(360)
+    criterion_cls_ele = CELoss(180)
+    criterion_reg = DeltaLoss(cfg.CONST.BIN_SIZE)
 
     # Load pretrained model if exists
     init_epoch = 0
     # best_CD =  10000 # less is better
     best_emd =  10000 # less is better
+    best_view_loss = 10000
     best_epoch = -1
     if 'WEIGHTS' in cfg.CONST and cfg.TRAIN.RESUME_TRAIN:
         print('[INFO] %s Recovering from %s ...' % (dt.now(), cfg.CONST.WEIGHTS))
@@ -158,7 +174,7 @@ def train_net(cfg):
         batch_end_time = time()
         n_batches = len(train_data_loader)
         for batch_idx, (taxonomy_names, sample_names, rendering_images,
-                        ground_truth_point_clouds) in enumerate(train_data_loader):
+                        ground_truth_point_clouds, ground_truth_views) in enumerate(train_data_loader):
             
             # Only one image per batch
             rendering_images = torch.squeeze(rendering_images, 1)
@@ -169,6 +185,7 @@ def train_net(cfg):
             # Get data from data loader
             rendering_images = utils.network_utils.var_or_cuda(rendering_images)
             ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
+            ground_truth_views = utils.network_utils.var_or_cuda(ground_truth_views)
 
             #=================================================#
             #           Train the encoder, decoder            #
@@ -178,7 +195,7 @@ def train_net(cfg):
             generated_point_clouds = decoder(image_code)
             
             # loss computation
-            reconstruction_loss = torch.mean(emd(normalized_point_clouds, ground_truth_point_clouds))
+            reconstruction_loss = torch.mean(emd(generated_point_clouds, ground_truth_point_clouds))
 
             # Gradient decent
             encoder.zero_grad()
@@ -195,8 +212,8 @@ def train_net(cfg):
             cls_azi, cls_ele, reg_azi, reg_ele= view_estimator(vgg_features)
 
             # loss computation
-            loss_cls_azi = criterion_cls_azi(cls_azi, ground_truth_view[:, 0])
-            loss_cls_ele = criterion_cls_ele(cls_ele, ground_truth_view[:, 1])
+            loss_cls_azi = criterion_cls_azi(cls_azi, ground_truth_views[:, 0])
+            loss_cls_ele = criterion_cls_ele(cls_ele, ground_truth_views[:, 1])
             loss_reg = criterion_reg(reg_azi, reg_ele, ground_truth_view.float())
             view_loss = loss_cls_azi + loss_cls_ele + loss_reg
             
