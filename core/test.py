@@ -13,17 +13,18 @@ import utils.point_cloud_visualization
 import utils.data_loaders
 import utils.data_transforms
 import utils.network_utils
+import utils.view_pred_utils
 
 from datetime import datetime as dt
 
 from models.encoder import Encoder
 from models.decoder import Decoder
-from models.view_estimator import ViewEstimater
+from models.view_estimater import ViewEstimater
 
 from losses.chamfer_loss import ChamferLoss
 from losses.earth_mover_distance import EMD
 from losses.cross_entropy_loss import CELoss
-from losses.cross_delta_loss import DeltaLoss
+from losses.delta_loss import DeltaLoss
 
 def test_net(cfg,
              epoch_idx=-1,
@@ -32,7 +33,7 @@ def test_net(cfg,
              test_writer=None,
              encoder=None,
              decoder=None,
-             view_estimator=None):
+             view_estimater=None):
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
     torch.backends.cudnn.benchmark = True
 
@@ -57,22 +58,24 @@ def test_net(cfg,
                                                        shuffle=False)
 
     # Set up networks
-    if decoder is None or encoder is None or stn is None:
+    if decoder is None or encoder is None or view_estimater is None:
         encoder = Encoder(cfg)
         decoder = Decoder(cfg)
-        stn = STN(cfg)
+
+        azi_classes, ele_classes = int(360 / cfg.CONST.BIN_SIZE), int(180 / cfg.CONST.BIN_SIZE)
+        view_estimater = ViewEstimater(cfg, azi_classes=azi_classes, ele_classes=ele_classes)
 
         if torch.cuda.is_available():
             encoder = torch.nn.DataParallel(encoder).cuda()
             decoder = torch.nn.DataParallel(decoder).cuda()
-            stn = torch.nn.DataParallel(stn).cuda()
+            view_estimater = torch.nn.DataParallel(view_estimater).cuda()
 
         print('[INFO] %s Loading weights from %s ...' % (dt.now(), cfg.CONST.WEIGHTS))
         checkpoint = torch.load(cfg.CONST.WEIGHTS)
         epoch_idx = checkpoint['epoch_idx']
         encoder.load_state_dict(checkpoint['encoder_state_dict'])
         decoder.load_state_dict(checkpoint['decoder_state_dict'])
-        stn.load_state_dict(checkpoint['stn_state_dict'])
+        view_estimater.load_state_dict(checkpoint['view_estimater_state_dict'])
 
     # Set up loss functions
     emd = EMD().cuda()
@@ -80,11 +83,9 @@ def test_net(cfg,
     criterion_cls_ele = CELoss(180)
     criterion_reg = DeltaLoss(cfg.CONST.BIN_SIZE)
 
-    # Testing loop
     n_samples = len(test_data_loader)
-    test_iou = dict()
-    reconstruction_losses = utils.network_utils.AverageMeter()
 
+    reconstruction_losses = utils.network_utils.AverageMeter()
     cls_azi_losses = utils.network_utils.AverageMeter()
     cls_ele_losses = utils.network_utils.AverageMeter()
     cls_azi_losses = utils.network_utils.AverageMeter()
@@ -94,8 +95,9 @@ def test_net(cfg,
     # Switch models to evaluation mode
     encoder.eval()
     decoder.eval()
-    view_estimator.eval()
+    view_estimater.eval()
     
+    # Testing loop
     for sample_idx, (taxonomy_names, sample_names, rendering_images,
                     ground_truth_point_clouds, ground_truth_views) in enumerate(test_data_loader):
         with torch.no_grad():
@@ -108,25 +110,42 @@ def test_net(cfg,
             ground_truth_views = utils.network_utils.var_or_cuda(ground_truth_views)
             
             #=================================================#
-            #           Train the encoder, decoder            #
+            #           Test the encoder, decoder             #
             #=================================================#
-            image_features = encoder(rendering_images)
-            tree = [image_features]
-            generated_point_clouds = decoder(tree)
-
+            vgg_features, image_code = encoder(rendering_images)
+            image_code = [image_code]
+            generated_point_clouds = decoder(image_code)
+            
             # loss computation
-            reconstruction_loss = torch.mean(emd(normalized_point_clouds, ground_truth_point_clouds))
+            reconstruction_loss = torch.mean(emd(generated_point_clouds, ground_truth_point_clouds))
             
             #=================================================#
-            #          Train the view estimater               #
+            #          Test the view estimater                #
             #=================================================#
-            cls_azi, cls_ele, reg_azi, reg_ele= view_estimator(vgg_features)
+            # output[0]:prediction of azi class
+            # output[1]:prediction of ele class
+            # output[2]:prediction of azi regression
+            # output[3]:prediction of ele regression
+            output = view_estimater(vgg_features)
 
             # loss computation
-            loss_cls_azi = criterion_cls_azi(cls_azi, ground_truth_views[:, 0])
-            loss_cls_ele = criterion_cls_ele(cls_ele, ground_truth_views[:, 1])
-            loss_reg = criterion_reg(reg_azi, reg_ele, ground_truth_view.float())
+            loss_cls_azi = criterion_cls_azi(output[0], ground_truth_views[:, 0])
+            loss_cls_ele = criterion_cls_ele(output[1], ground_truth_views[:, 1])
+            loss_reg = criterion_reg(output[2], output[3], ground_truth_views.float())
             view_loss = loss_cls_azi + loss_cls_ele + loss_reg
+            
+            #=================================================#
+            #              Get predict view                   #
+            #=================================================#
+            preds = utils.view_pred_utils.get_pred_from_cls_output([output[0], output[1]])
+
+            for n in range(len(preds)):
+                pred_delta = output[n + 2]
+                delta_value = pred_delta[torch.arange(pred_delta.size(0)), preds[n].long()].tanh() / 2
+                preds[n] = (preds[n].float() + delta_value + 0.5) * cfg.CONST.BIN_SIZE
+            
+            print("predict:", preds[0])
+            print("gt:", ground_truth_views[0])
 
             # Append loss and accuracy to average metrics
             reconstruction_losses.update(reconstruction_loss.item())
@@ -134,30 +153,35 @@ def test_net(cfg,
             cls_ele_losses.update(loss_cls_ele.item())
             reg_losses.update(loss_reg.item())
             view_losses.update(view_loss.item())
-
+ 
             # Append generated point clouds to TensorBoard
             if output_dir and sample_idx < 3:
                 img_dir = output_dir % 'images'
                 # image Visualization
-
-
-                # Point cloud Visualization
+                input_image = rendering_images[0].mul(255).byte()
+                input_image = input_image.cpu().numpy().transpose((1, 2, 0))
+                test_writer.add_image('Test Sample#%02d/Input Sketch' % sample_idx, input_image, epoch_idx)
+                
+                # Predict Pointcloud
                 g_pc = generated_point_clouds[0].detach().cpu().numpy()
+                pred_view = preds[0].detach().cpu().numpy()
                 rendering_views = utils.point_cloud_visualization.get_point_cloud_image(g_pc, os.path.join(img_dir, 'test'),
-                                                                                        epoch_idx, "reconstruction", )
+                                                                                        epoch_idx, "reconstruction", pred_view)
                 test_writer.add_image('Test Sample#%02d/Point Cloud Reconstructed' % sample_idx, rendering_views, epoch_idx)
-
+                
+                # Groundtruth Pointcloud
                 gt_pc = ground_truth_point_clouds[0].detach().cpu().numpy()
+                ground_truth_view = ground_truth_views[0].detach().cpu().numpy()
                 rendering_views = utils.point_cloud_visualization.get_point_cloud_image(gt_pc, os.path.join(img_dir, 'test'),
-                                                                                        epoch_idx, "ground truth")
+                                                                                        epoch_idx, "ground truth", ground_truth_view)
                 test_writer.add_image('Test Sample#%02d/Point Cloud GroundTruth' % sample_idx, rendering_views, epoch_idx)
 
     if test_writer is not None:
-        test_writer.add_scalar('EncoderDecoder/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)
-        test_writer.add_scalar('EncoderDecoder/EpochLoss_Cls_azi', cls_azi_losses.avg, epoch_idx + 1)
-        test_writer.add_scalar('EncoderDecoder/EpochLoss_Cls_ele', cls_ele_losses.avg, epoch_idx + 1)
-        test_writer.add_scalar('EncoderDecoder/EpochLoss_Reg', reg_losses.avg, epoch_idx + 1)
-        test_writer.add_scalar('EncoderDecoder/EpochLoss_View', view_losses.avg, epoch_idx + 1)
+        test_writer.add_scalar('EncoderDecoder/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx)
+        test_writer.add_scalar('EncoderDecoder/EpochLoss_Cls_azi', cls_azi_losses.avg, epoch_idx)
+        test_writer.add_scalar('EncoderDecoder/EpochLoss_Cls_ele', cls_ele_losses.avg, epoch_idx)
+        test_writer.add_scalar('EncoderDecoder/EpochLoss_Reg', reg_losses.avg, epoch_idx)
+        test_writer.add_scalar('EncoderDecoder/EpochLoss_View', view_losses.avg, epoch_idx)
 
     return reconstruction_losses.avg, view_losses.avg
 

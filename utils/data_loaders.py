@@ -166,7 +166,7 @@ class ShapeNetDataLoader:
                 view = view.split()
                 # get first two (azimuth, elevation)
                 view = view[:2]
-                view = [round(float(item)) for item in view]
+                view = [round(float(item)) if float(item) < 359.5 else 0 for item in view]
                 views.append(view)
 
             # Append to the list of rendering images

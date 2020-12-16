@@ -19,12 +19,12 @@ from time import time
 from core.test import test_net
 from models.encoder import Encoder
 from models.decoder import Decoder
-from models.view_estimator import ViewEstimater
+from models.view_estimater import ViewEstimater
 
 from losses.chamfer_loss import ChamferLoss
 from losses.earth_mover_distance import EMD
 from losses.cross_entropy_loss import CELoss
-from losses.cross_delta_loss import DeltaLoss
+from losses.delta_loss import DeltaLoss
 
 def train_net(cfg):
     print("cuda is available?", torch.cuda.is_available())
@@ -76,11 +76,11 @@ def train_net(cfg):
     decoder = Decoder(cfg)
 
     azi_classes, ele_classes = int(360 / cfg.CONST.BIN_SIZE), int(180 / cfg.CONST.BIN_SIZE)
-    view_estimator = ViewEstimater(cfg, azi_classes=azi_classes, ele_classes=ele_classes)
+    view_estimater = ViewEstimater(cfg, azi_classes=azi_classes, ele_classes=ele_classes)
 
     print('[DEBUG] %s Parameters in Encoder: %d.' % (dt.now(), utils.network_utils.count_parameters(encoder)))
     print('[DEBUG] %s Parameters in Decoder: %d.' % (dt.now(), utils.network_utils.count_parameters(decoder)))
-    print('[DEBUG] %s Parameters in View Estimator: %d.' % (dt.now(), utils.network_utils.count_parameters(view_estimator)))
+    print('[DEBUG] %s Parameters in View Estimator: %d.' % (dt.now(), utils.network_utils.count_parameters(view_estimater)))
 
     # Initialize weights of networks
     encoder.apply(utils.network_utils.init_weights)
@@ -94,7 +94,7 @@ def train_net(cfg):
         decoder_solver = torch.optim.Adam(decoder.parameters(),
                                           lr=cfg.TRAIN.DECODER_LEARNING_RATE,
                                           betas=cfg.TRAIN.BETAS)
-        view_estimator_solver = torch.optim.Adam(view_estimator.parameters(),
+        view_estimater_solver = torch.optim.Adam(view_estimater.parameters(),
                                           lr=cfg.TRAIN.VIEW_ESTIMATOR_LEARNING_RATE,
                                           betas=cfg.TRAIN.BETAS)
     elif cfg.TRAIN.POLICY == 'sgd':
@@ -104,7 +104,7 @@ def train_net(cfg):
         decoder_solver = torch.optim.SGD(decoder.parameters(),
                                          lr=cfg.TRAIN.DECODER_LEARNING_RATE,
                                          momentum=cfg.TRAIN.MOMENTUM)
-        view_estimator_solver = torch.optim.SGD(view_estimator.parameters(),
+        view_estimater_solver = torch.optim.SGD(view_estimater.parameters(),
                                          lr=cfg.TRAIN.VIEW_ESTIMATOR_LEARNING_RATE,
                                          momentum=cfg.TRAIN.MOMENTUM)
     else:
@@ -117,13 +117,13 @@ def train_net(cfg):
     decoder_lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(decoder_solver,
                                                                 milestones=cfg.TRAIN.DECODER_LR_MILESTONES,
                                                                 gamma=cfg.TRAIN.GAMMA)
-    view_estimator_lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(view_estimator_solver,
-                                                                milestones=cfg.TRAIN.DECODER_LR_MILESTONES,
+    view_estimater_lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(view_estimater_solver,
+                                                                milestones=cfg.TRAIN.VIEW_ESTIMATOR_LR_MILESTONES,
                                                                 gamma=cfg.TRAIN.GAMMA)
     if torch.cuda.is_available():
         encoder = torch.nn.DataParallel(encoder).cuda()
         decoder = torch.nn.DataParallel(decoder).cuda()
-        view_estimator = torch.nn.DataParallel(view_estimator).cuda()
+        view_estimater = torch.nn.DataParallel(view_estimater).cuda()
 
     # Set up loss functions
     chamfer = ChamferLoss().cuda()
@@ -176,7 +176,7 @@ def train_net(cfg):
         # switch models to training mode
         encoder.train()
         decoder.train()
-        view_estimator.train()
+        view_estimater.train()
 
         batch_end_time = time()
         n_batches = len(train_data_loader)
@@ -193,7 +193,7 @@ def train_net(cfg):
             rendering_images = utils.network_utils.var_or_cuda(rendering_images)
             ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
             ground_truth_views = utils.network_utils.var_or_cuda(ground_truth_views)
-
+            
             #=================================================#
             #           Train the encoder, decoder            #
             #=================================================#
@@ -207,29 +207,29 @@ def train_net(cfg):
             # Gradient decent
             encoder.zero_grad()
             decoder.zero_grad()
-            
             reconstruction_loss.backward()
-
             encoder_solver.step()
             decoder_solver.step()
             
             #=================================================#
             #          Train the view estimater               #
             #=================================================#
-            cls_azi, cls_ele, reg_azi, reg_ele= view_estimator(vgg_features)
+            # output[0]:prediction of azi class
+            # output[1]:prediction of ele class
+            # output[2]:prediction of azi regression
+            # output[3]:prediction of ele regression
+            output = view_estimater(vgg_features)
 
             # loss computation
-            loss_cls_azi = criterion_cls_azi(cls_azi, ground_truth_views[:, 0])
-            loss_cls_ele = criterion_cls_ele(cls_ele, ground_truth_views[:, 1])
-            loss_reg = criterion_reg(reg_azi, reg_ele, ground_truth_view.float())
+            loss_cls_azi = criterion_cls_azi(output[0], ground_truth_views[:, 0])
+            loss_cls_ele = criterion_cls_ele(output[1], ground_truth_views[:, 1])
+            loss_reg = criterion_reg(output[2], output[3], ground_truth_views.float())
             view_loss = loss_cls_azi + loss_cls_ele + loss_reg
             
             # Gradient decent
-            view_estimator.zero_grad()
-
+            view_estimater.zero_grad()
             view_loss.backward()
-            
-            view_estimator.step()
+            view_estimater_solver.step()
 
             #=================================================#
             #              Show result                        #
@@ -264,7 +264,7 @@ def train_net(cfg):
         # Adjust learning rate
         encoder_lr_scheduler.step()
         decoder_lr_scheduler.step()
-        view_estimator_lr_scheduler.step()
+        view_estimater_lr_scheduler.step()
 
         # Tick / tock
         epoch_end_time = time()
@@ -273,7 +273,7 @@ def train_net(cfg):
               reconstruction_losses.avg, view_losses.avg))
 
         # Validate the training models
-        current_emd, current_view_loss = test_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, encoder, decoder, view_estimator)
+        current_emd, current_view_loss = test_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, encoder, decoder, view_estimater)
 
         # Save weights to file
         if (epoch_idx + 1) % cfg.TRAIN.SAVE_FREQ == 0:
@@ -282,8 +282,8 @@ def train_net(cfg):
 
             utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'ckpt-epoch-%04d.pth' % (epoch_idx + 1)), 
                                                  epoch_idx + 1, 
-                                                 encoder, encoder_solver, decoder, decoder_solver, view_estimator, view_estimator_solver,
-                                                 best_emd, best_epoch)
+                                                 encoder, encoder_solver, decoder, decoder_solver, view_estimater, view_estimater_solver,
+                                                 best_emd, best_view_loss, best_epoch)
         
         # Save best check point for emd
         if current_emd < best_emd:
@@ -294,20 +294,20 @@ def train_net(cfg):
             best_epoch = epoch_idx + 1
             utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'best-reconstruction-ckpt.pth'), 
                                                  epoch_idx + 1, 
-                                                 encoder, encoder_solver, decoder, decoder_solver, view_estimator, view_estimator_solver,
-                                                 best_emd, best_epoch)
+                                                 encoder, encoder_solver, decoder, decoder_solver, view_estimater, view_estimater_solver,
+                                                 best_emd, best_view_loss ,best_epoch)
         
         # Save best check point for view
         if current_view_loss < best_view_loss:
             if not os.path.exists(ckpt_dir):
                 os.makedirs(ckpt_dir)
 
-            best_emd = current_emd
+            best_view_loss = current_emd
             best_epoch = epoch_idx + 1
             utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'best-view-ckpt.pth'), 
                                                  epoch_idx + 1, 
-                                                 encoder, encoder_solver, decoder, decoder_solver, view_estimator, view_estimator_solver,
-                                                 best_emd, best_epoch)
+                                                 encoder, encoder_solver, decoder, decoder_solver, view_estimater, view_estimater_solver,
+                                                 best_emd, best_view_loss, best_epoch)
         
     # Close SummaryWriter for TensorBoard
     train_writer.close()

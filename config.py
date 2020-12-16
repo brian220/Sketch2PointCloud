@@ -44,7 +44,7 @@ __C.CONST.BIN_SIZE                          = 15
 # Directories
 #
 __C.DIR                                     = edict()
-__C.DIR.OUT_PATH                            = './output'
+__C.DIR.OUT_PATH                            = '/media/itri/Files_2TB/chaoyu/pointcloud3d/output/new_output/'
 __C.DIR.RANDOM_BG_PATH                      = '/home/hzxie/Datasets/SUN2012/JPEGImages'
 
 #
@@ -70,10 +70,9 @@ __C.TRAIN.POLICY                            = 'adam'        # available options:
 __C.TRAIN.ENCODER_LEARNING_RATE             = 5e-4
 __C.TRAIN.DECODER_LEARNING_RATE             = 5e-4
 __C.TRAIN.VIEW_ESTIMATOR_LEARNING_RATE      = 5e-4
-__C.TRAIN.STN_LEARNING_RATE                 = 5e-4
 __C.TRAIN.ENCODER_LR_MILESTONES             = [200]
 __C.TRAIN.DECODER_LR_MILESTONES             = [200]
-__C.TRAIN.STN_LR_MILESTONES                 = [200]
+__C.TRAIN.VIEW_ESTIMATOR_LR_MILESTONES      = [200]
 __C.TRAIN.BETAS                             = (.9, .999)
 __C.TRAIN.MOMENTUM                          = .9
 __C.TRAIN.GAMMA                             = .5
