@@ -253,7 +253,7 @@ def train_net(cfg):
                  REC_Loss = %.4f VIEW_Loss =  %.4f'
                 % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val,
                    data_time.val, reconstruction_loss.item(), view_loss.item()))
-
+        
         # Append epoch loss to TensorBoard
         train_writer.add_scalar('EncoderDecoder/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)
         train_writer.add_scalar('EncoderDecoder/EpochLoss_Cls_azi', cls_azi_losses.avg, epoch_idx + 1)

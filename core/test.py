@@ -137,15 +137,13 @@ def test_net(cfg,
             #=================================================#
             #              Get predict view                   #
             #=================================================#
-            preds = utils.view_pred_utils.get_pred_from_cls_output([output[0], output[1]])
-
-            for n in range(len(preds)):
-                pred_delta = output[n + 2]
-                delta_value = pred_delta[torch.arange(pred_delta.size(0)), preds[n].long()].tanh() / 2
-                preds[n] = (preds[n].float() + delta_value + 0.5) * cfg.CONST.BIN_SIZE
+            preds_cls = utils.view_pred_utils.get_pred_from_cls_output([output[0], output[1]])
             
-            print("predict:", preds[0])
-            print("gt:", ground_truth_views[0])
+            preds = []
+            for n in range(len(preds_cls)):
+                pred_delta = output[n + 2]
+                delta_value = pred_delta[torch.arange(pred_delta.size(0)), preds_cls[n].long()].tanh() / 2
+                preds.append((preds_cls[n].float() + delta_value + 0.5) * cfg.CONST.BIN_SIZE)
 
             # Append loss and accuracy to average metrics
             reconstruction_losses.update(reconstruction_loss.item())
@@ -164,7 +162,9 @@ def test_net(cfg,
                 
                 # Predict Pointcloud
                 g_pc = generated_point_clouds[0].detach().cpu().numpy()
-                pred_view = preds[0].detach().cpu().numpy()
+                pred_view = []
+                pred_view.append(preds[0][0].detach().cpu().numpy())
+                pred_view.append(preds[1][0].detach().cpu().numpy())
                 rendering_views = utils.point_cloud_visualization.get_point_cloud_image(g_pc, os.path.join(img_dir, 'test'),
                                                                                         epoch_idx, "reconstruction", pred_view)
                 test_writer.add_image('Test Sample#%02d/Point Cloud Reconstructed' % sample_idx, rendering_views, epoch_idx)

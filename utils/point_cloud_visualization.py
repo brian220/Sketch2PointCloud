@@ -20,8 +20,8 @@ def get_point_cloud_image(generate_point_cloud, save_dir, n_itr, img_type, view=
             in_u_sphere=True,
             show=False,
             title=f"{n_itr} {img_type}",
-            elev=view[1],
-            azim=360-view[0]
+            azim=360-view[0],
+            elev=view[1]
         )
     
     save_path = os.path.join(save_dir, 'pcs-%06d %s.png' % (n_itr, img_type))
@@ -32,8 +32,9 @@ def get_point_cloud_image(generate_point_cloud, save_dir, n_itr, img_type, view=
 
 
 def plot_3d_point_cloud(x, y, z, show=False, show_axis=True, in_u_sphere=False,
-                        marker='.', s=8, alpha=.8, figsize=(5, 5), elev=10,
-                        azim=240, axis=None, title=None, *args, **kwargs):
+                        marker='.', s=8, alpha=.8, figsize=(5, 5), 
+                        azim=240, elev=10,
+                        axis=None, title=None, *args, **kwargs):
     # plt.switch_backend('tkagg')
     if axis is None:
         fig = plt.figure(figsize=figsize)
@@ -46,7 +47,7 @@ def plot_3d_point_cloud(x, y, z, show=False, show_axis=True, in_u_sphere=False,
         plt.title(title)
 
     sc = ax.scatter(x, y, z, marker=marker, s=s, alpha=alpha, *args, **kwargs)
-    ax.view_init(elev=elev, azim=azim)
+    ax.view_init(azim=azim, elev=elev)
     
     # The image and point cloud has inverse x, y dir order
     plt.xlabel(' x', fontsize = 12, color = 'black')
