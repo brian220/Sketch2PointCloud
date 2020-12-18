@@ -16,7 +16,7 @@ from datetime import datetime as dt
 from tensorboardX import SummaryWriter
 from time import time
 
-from core.test import test_net
+from core.valid import valid_net
 from models.encoder import Encoder
 from models.decoder import Decoder
 from models.view_estimater import ViewEstimater
@@ -273,7 +273,7 @@ def train_net(cfg):
               reconstruction_losses.avg, view_losses.avg))
 
         # Validate the training models
-        current_emd, current_view_loss = test_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, encoder, decoder, view_estimater)
+        current_emd, current_view_loss = valid_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, encoder, decoder, view_estimater)
 
         # Save weights to file
         if (epoch_idx + 1) % cfg.TRAIN.SAVE_FREQ == 0:
