@@ -39,6 +39,9 @@ __C.CONST.BATCH_SIZE                        = 64
 __C.CONST.CROP_IMG_W                        = 128       # Dummy property for Pascal 3D
 __C.CONST.CROP_IMG_H                        = 128       # Dummy property for Pascal 3D
 __C.CONST.BIN_SIZE                          = 15
+__C.CONST.RECONSTRUCTION_WEIGHTS            = '/media/itri/Files_2TB/chaoyu/pointcloud3d/output/new_output/checkpoints/2020-12-17T11:56:09.024186/best-reconstruction-ckpt.pth'
+__C.CONST.VIEW_ESTIMATION_WEIGHTS           = '/media/itri/Files_2TB/chaoyu/pointcloud3d/output/new_output/checkpoints/2020-12-17T11:56:09.024186/best-view-ckpt.pth'
+__C.CONST.NUM_POINTS                        = 2048
 
 #
 # Directories

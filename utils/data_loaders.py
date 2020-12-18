@@ -2,7 +2,7 @@
 #
 # Developed by Chaoyu Huang 
 # email: b608390.cs04@nctu.edu.tw
-# Lot's of codes are borrowed from Pix2Vox: 
+# Lot's of code reference to Pix2Vox: 
 # https://github.com/hzxie/Pix2Vox
 
 import cv2

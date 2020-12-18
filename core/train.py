@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 #
-# Developed by Chao Yu Huang <b608390.cs08g@nctu.edu.tw>
+# Developed by Chaoyu Huang 
+# email: b608390.cs04@nctu.edu.tw
+# Lot's of code reference to Pix2Vox: 
+# https://github.com/hzxie/Pix2Vox
 #
+
 import os
 import random
 import torch
