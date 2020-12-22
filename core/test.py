@@ -18,7 +18,7 @@ import utils.data_loaders
 import utils.data_transforms
 import utils.network_utils
 import utils.view_pred_utils
-import utils.rotation_err
+import utils.rotation_eval
 
 from datetime import datetime as dt
 
@@ -48,8 +48,8 @@ def test_net(cfg):
     ])
     dataset_loader = utils.data_loaders.DATASET_LOADER_MAPPING[cfg.DATASET.TEST_DATASET](cfg)
     test_data_loader = torch.utils.data.DataLoader(dataset=dataset_loader.get_dataset(
-        utils.data_loaders.DatasetType.TEST, cfg.CONST.N_VIEWS_RENDERING, test_transforms),
-                                                   batch_size=1,
+                                                   utils.data_loaders.DatasetType.TEST,  test_transforms),
+                                                   batch_size=cfg.CONST.BATCH_SIZE,
                                                    num_workers=1,
                                                    pin_memory=True,
                                                    shuffle=False)
@@ -76,8 +76,8 @@ def test_net(cfg):
     # Load weight for view estimater
     print('[INFO] %s Loading view estimation weights from %s ...' % (dt.now(), cfg.CONST.VIEW_ESTIMATION_WEIGHTS))
     view_checkpoint = torch.load(cfg.CONST.VIEW_ESTIMATION_WEIGHTS)
-    view_estimater.load_state_dict(view_checkpoint['view_estimater_state_dict'])
-    print('[INFO] Best view estimation result at epoch %d ...' % view_estimater['epoch_idx'])
+    view_estimater.load_state_dict(view_checkpoint['view_estimator_state_dict'])
+    print('[INFO] Best view estimation result at epoch %d ...' % view_checkpoint['epoch_idx'])
 
     # Set up loss functions
     emd = EMD().cuda()
@@ -87,14 +87,16 @@ def test_net(cfg):
     cd_distances = utils.network_utils.AverageMeter()
     pointwise_emd_distances = utils.network_utils.AverageMeter()
 
-    test_preds = torch.zeros([1, 2], dtype=torch.float).cuda()
-    test_ground_truth_views = torch.zeros([1, 2], dtype=torch.long).cuda()
+    test_preds = torch.zeros([1, 3], dtype=torch.float).cuda()
+    test_ground_truth_views = torch.zeros([1, 3], dtype=torch.long).cuda()
 
     # Switch models to evaluation mode
     encoder.eval()
     decoder.eval()
     view_estimater.eval()
-    
+
+    n_batches = len(test_data_loader)
+
     # Testing loop
     for sample_idx, (taxonomy_names, sample_names, rendering_images,
                     ground_truth_point_clouds, ground_truth_views) in enumerate(test_data_loader):
@@ -115,8 +117,8 @@ def test_net(cfg):
             generated_point_clouds = decoder(image_code)
             
             # Compute CD, EMD
+            cd_distance = cd(generated_point_clouds, ground_truth_point_clouds) / cfg.CONST.BATCH_SIZE / cfg.CONST.NUM_POINTS
             pointwise_emd_distance = torch.mean(emd(generated_point_clouds, ground_truth_point_clouds)) / cfg.CONST.NUM_POINTS
-            # cd_distance = 
             
             #=================================================#
             #          Test the view estimater                #
@@ -137,33 +139,44 @@ def test_net(cfg):
                 pred_delta = output[n + 2]
                 delta_value = pred_delta[torch.arange(pred_delta.size(0)), preds_cls[n].long()].tanh() / 2
                 preds.append((preds_cls[n].float() + delta_value + 0.5) * cfg.CONST.BIN_SIZE)
-            test_pred = torch.cat((preds[0].unsqueeze(1), preds[1].unsqueeze(1)), 1)
+            # In this experiment, expect all the object has a fixed rotaion angle 0 and with diferent view point
+            # Add the zero inplane term for the rotation acc calculation
+            zero_inplane = torch.zeros_like(preds[0])
+            # Add fixed inplane rotation to  pred view
+            test_pred = torch.cat((preds[0].unsqueeze(1), preds[1].unsqueeze(1), zero_inplane.unsqueeze(1)), 1)
+            # Add fixed inplane rotation to ground_truth_views
+            zero_inplane = zero_inplane.unsqueeze(1)
+            ground_truth_views = torch.cat((ground_truth_views, zero_inplane.long()), 1)
             
             # Append loss and accuracy to average metrics
+            cd_distances.update(cd_distance.item())
             pointwise_emd_distances.update(pointwise_emd_distance.item())
-            # cd_distances.update(cd_distance.item())
-
+            
             # concatenate results and labels for view estimation
             test_preds = torch.cat((test_preds, test_pred), 0)
             test_ground_truth_views = torch.cat((test_ground_truth_views, ground_truth_views), 0)
+
+            print("Test on [%d/%d] data, CD: %.4f EMD: %.4f" % (sample_idx + 1,  n_batches, cd_distance.item(), pointwise_emd_distance.item()))
     
     test_preds = test_preds[1:, :]
     test_ground_truth_views = test_ground_truth_views[1:, :]
 
     # calculate the rotation errors between prediction and ground truth
-    test_errs = utils.rotation_err(test_preds, test_ground_truth_views.float()).cpu().numpy()
+    test_errs = utils.rotation_eval.rotation_err(test_preds, test_ground_truth_views.float()).cpu().numpy()
     Acc = 100. * np.mean(test_errs <= 30)
     Med = np.median(test_errs)
     
     # print result
     print("Reconstruction result:")
-    print("EMD result: ", emd_distances.avg)
+    print("CD result: ", cd_distances.avg)
+    print("EMD result: ", pointwise_emd_distances.avg)
     print("View estimation result:")
     print('Med_Err is %.2f, and Acc_pi/6 is %.2f \n \n' % (Med, Acc))
-
+    logname = cfg.DIR.RESULT_PATH 
     with open(logname, 'a') as f:
         f.write('Reconstruction result: \n')
-        f.write("EMD result: ", emd_distances.avg)
+        f.write("CD result: %.4f" % cd_distances.avg)
+        f.write("EMD result: %.4f" % pointwise_emd_distances.avg)
         f.write('View estimation result: \n')
         f.write('Med_Err is %.2f, and Acc_pi/6 is %.2f \n \n' % (Med, Acc))
             
