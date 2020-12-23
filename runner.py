@@ -20,6 +20,7 @@ from pprint import pprint
 from config import cfg
 from core.train import train_net
 from core.test import test_net
+from core.evaluate import evaluate_net
 # from core.single_img_test import single_img_test_net
 
 
@@ -31,7 +32,9 @@ def get_args_from_command_line():
                         default=cfg.CONST.DEVICE,
                         type=str)
     parser.add_argument('--rand', dest='randomize', help='Randomize (do not use a fixed seed)', action='store_true')
+    parser.add_argument('--train', dest='train', help='Train neural networks', action='store_true')
     parser.add_argument('--test', dest='test', help='Test neural networks', action='store_true')
+    parser.add_argument('--evaluate', dest='evaluate', help='Evaluate neural networks', action='store_true')
     parser.add_argument('--batch-size',
                         dest='batch_size',
                         help='name of the net',
@@ -67,10 +70,14 @@ def main():
         os.environ["CUDA_VISIBLE_DEVICES"] = cfg.CONST.DEVICE
 
     # Start train/test process
-    if not args.test:
+    if args.train:
         train_net(cfg)
-    else:
+    elif args.test:
         test_net(cfg)
+    elif args.evaluate:
+        evaluate_net(cfg)
+    else:
+        print("Please specify the arguments (--train, --test, --evaluate)")
 
 
 if __name__ == '__main__':

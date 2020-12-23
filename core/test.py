@@ -67,15 +67,15 @@ def test_net(cfg):
     
     # Load weight
     # Load weight for encoder, decoder
-    print('[INFO] %s Loading reconstruction weights from %s ...' % (dt.now(), cfg.CONST.RECONSTRUCTION_WEIGHTS))
-    rec_checkpoint = torch.load(cfg.CONST.RECONSTRUCTION_WEIGHTS)
+    print('[INFO] %s Loading reconstruction weights from %s ...' % (dt.now(), cfg.TEST.RECONSTRUCTION_WEIGHTS))
+    rec_checkpoint = torch.load(cfg.TEST.RECONSTRUCTION_WEIGHTS)
     encoder.load_state_dict(rec_checkpoint['encoder_state_dict'])
     decoder.load_state_dict(rec_checkpoint['decoder_state_dict'])
     print('[INFO] Best reconstruction result at epoch %d ...' % rec_checkpoint['epoch_idx'])
 
     # Load weight for view estimater
-    print('[INFO] %s Loading view estimation weights from %s ...' % (dt.now(), cfg.CONST.VIEW_ESTIMATION_WEIGHTS))
-    view_checkpoint = torch.load(cfg.CONST.VIEW_ESTIMATION_WEIGHTS)
+    print('[INFO] %s Loading view estimation weights from %s ...' % (dt.now(), cfg.TEST.VIEW_ESTIMATION_WEIGHTS))
+    view_checkpoint = torch.load(cfg.TEST.VIEW_ESTIMATION_WEIGHTS)
     view_estimater.load_state_dict(view_checkpoint['view_estimator_state_dict'])
     print('[INFO] Best view estimation result at epoch %d ...' % view_checkpoint['epoch_idx'])
 

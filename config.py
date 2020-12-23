@@ -39,8 +39,6 @@ __C.CONST.BATCH_SIZE                        = 1
 __C.CONST.CROP_IMG_W                        = 128       # Dummy property for Pascal 3D
 __C.CONST.CROP_IMG_H                        = 128       # Dummy property for Pascal 3D
 __C.CONST.BIN_SIZE                          = 15
-__C.CONST.RECONSTRUCTION_WEIGHTS            = '/media/itri/Files_2TB/chaoyu/pointcloud3d/output/new_output/checkpoints/2020-12-17T11:56:09.024186/best-reconstruction-ckpt.pth'
-__C.CONST.VIEW_ESTIMATION_WEIGHTS           = '/media/itri/Files_2TB/chaoyu/pointcloud3d/output/new_output/checkpoints/2020-12-17T11:56:09.024186/best-view-ckpt.pth'
 __C.CONST.NUM_POINTS                        = 2048
 
 #
@@ -91,3 +89,18 @@ __C.TEST                                    = edict()
 __C.TEST.RANDOM_BG_COLOR_RANGE              = [[240, 240], [240, 240], [240, 240]]
 __C.TEST.VOXEL_THRESH                       = [.2, .3, .4, .5]
 __C.TEST.NUM_WORKER                         = 4             # number of data workers
+__C.TEST.RECONSTRUCTION_WEIGHTS             = '/media/itri/Files_2TB/chaoyu/pointcloud3d/output/new_output/checkpoints/2020-12-17T11:56:09.024186/best-reconstruction-ckpt.pth'
+__C.TEST.VIEW_ESTIMATION_WEIGHTS            = '/media/itri/Files_2TB/chaoyu/pointcloud3d/output/new_output/checkpoints/2020-12-17T11:56:09.024186/best-view-ckpt.pth'
+
+#
+# Evaluating options
+#
+__C.EVALUATE                                = edict()
+__C.EVALUATE.TAXONOMY_ID                    = '03001627'
+__C.EVALUATE.INPUT_IMAGE_FOLDER             = '/media/itri/Files_2TB/chaoyu/pointcloud3d/pc3d/evaluate/evaluate_input_img/'
+__C.EVALUATE.OUTPUT_FOLDER                  = '/media/itri/Files_2TB/chaoyu/pointcloud3d/pc3d/evaluate/evaluate_output/'
+__C.EVALUATE.INFO_FILE                      = '/media/itri/Files_2TB/chaoyu/pointcloud3d/pc3d/evaluate/eval_chair.txt'
+__C.EVALUATE.RECONSTRUCTION_WEIGHTS         = '/media/itri/Files_2TB/chaoyu/pointcloud3d/output/new_output/checkpoints/2020-12-17T11:56:09.024186/best-reconstruction-ckpt.pth'
+__C.EVALUATE.VIEW_ESTIMATION_WEIGHTS        = '/media/itri/Files_2TB/chaoyu/pointcloud3d/output/new_output/checkpoints/2020-12-17T11:56:09.024186/best-view-ckpt.pth'
+
+

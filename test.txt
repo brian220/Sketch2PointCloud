@@ -1,0 +1,11 @@
+Reconstruction result: 
+Reconstruction result: 
+CD result: 3.3568EMD result: 0.0624Reconstruction result: 
+CD result: 0.0016EMD result: 0.0624Reconstruction result: 
+CD result: 0.0007EMD result: 0.0498View estimation result: 
+Med_Err is 0.72, and Acc_pi/6 is 100.00 
+ 
+Reconstruction result: 
+CD result: 0.0016EMD result: 0.0624View estimation result: 
+Med_Err is 1.81, and Acc_pi/6 is 97.35 
+ 
