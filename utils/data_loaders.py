@@ -29,31 +29,43 @@ class DatasetType(Enum):
 
 
 # //////////////////////////////// = End of DatasetType Class Definition = ///////////////////////////////// #
+def init_pointcloud_loader(num_points):
+    Z = np.random.rand(num_points) + 1.
+    h = np.random.uniform(10., 214., size=(num_points,))
+    w = np.random.uniform(10., 214., size=(num_points,))
+    X = (w - 111.5) / 248. * -Z
+    Y = (h - 111.5) / 248. * Z
+    X = np.reshape(X, (-1, 1))
+    Y = np.reshape(Y, (-1, 1))
+    Z = np.reshape(Z, (-1, 1))
+    XYZ = np.concatenate((X, Y, Z), 1)
+    return XYZ.astype('float32')
 
 
 class ShapeNetDataset(torch.utils.data.dataset.Dataset):
     """ShapeNetDataset class used for PyTorch DataLoader"""
-    def __init__(self, dataset_type, file_list, transforms=None):
+    def __init__(self, dataset_type, file_list, init_num_points, transforms=None):
         self.dataset_type = dataset_type
         self.file_list = file_list
+        self.init_num_points = init_num_points
         self.transforms = transforms
-
+        
     def __len__(self):
         return len(self.file_list)
 
     def __getitem__(self, idx):
-        taxonomy_name, sample_name, rendering_images, point_cloud, ground_truth_view = self.get_datum(idx)
+        taxonomy_name, sample_name, rendering_images, init_point_cloud, ground_truth_point_cloud, ground_truth_view = self.get_datum(idx)
 
         if self.transforms:
             rendering_images = self.transforms(rendering_images)
 
-        return taxonomy_name, sample_name, rendering_images, point_cloud, ground_truth_view
+        return taxonomy_name, sample_name, rendering_images, init_point_cloud, ground_truth_point_cloud, ground_truth_view
 
     def get_datum(self, idx):
         taxonomy_name = self.file_list[idx]['taxonomy_name']
         sample_name = self.file_list[idx]['sample_name']
         rendering_image_paths = self.file_list[idx]['rendering_images']
-        point_cloud_path = self.file_list[idx]['point_cloud']
+        ground_truth_point_cloud_path = self.file_list[idx]['point_cloud']
         views = self.file_list[idx]['views']
 
         # get data of rendering images (sample 1 image from paths)
@@ -77,13 +89,18 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         rendering_images.append(rendering_image)
     
         # get data of point cloud
-        _, suffix = os.path.splitext(point_cloud_path)
+        _, suffix = os.path.splitext(ground_truth_point_cloud_path)
 
         if suffix == '.ply':
-            point_cloud = PyntCloud.from_file(point_cloud_path)
-            point_cloud = np.array(point_cloud.points)
+            ground_truth_point_cloud = PyntCloud.from_file(ground_truth_point_cloud_path)
+            ground_truth_point_cloud = np.array(ground_truth_point_cloud.points)
 
-        return taxonomy_name, sample_name, np.asarray(rendering_images), point_cloud, np.asarray(selected_view)
+        return (taxonomy_name,
+               sample_name,
+               np.asarray(rendering_images),
+               init_pointcloud_loader(self.init_num_points),
+               ground_truth_point_cloud,
+               np.asarray(selected_view))
 
 
 # //////////////////////////////// = End of ShapeNetDataset Class Definition = ///////////////////////////////// #
@@ -96,6 +113,7 @@ class ShapeNetDataLoader:
         self.point_cloud_path_template = cfg.DATASETS.SHAPENET.POINT_CLOUD_PATH
         self.view_path_template = cfg.DATASETS.SHAPENET.VIEW_PATH
         self.class_name = cfg.DATASET.CLASS
+        self.init_num_points = cfg.GRAPHX.NUM_INIT_POINTS
 
         # Load all taxonomies of the dataset
         with open(cfg.DATASETS.SHAPENET.TAXONOMY_FILE_PATH, encoding='utf-8') as file:
@@ -120,7 +138,7 @@ class ShapeNetDataLoader:
         files = self.get_files_of_taxonomy(taxonomy_folder_name, samples)
 
         print('[INFO] %s Complete collecting files of the dataset. Total files: %d.' % (dt.now(), len(files)))
-        return ShapeNetDataset(dataset_type, files, transforms)
+        return ShapeNetDataset(dataset_type, files, self.init_num_points, transforms)
         
     def get_files_of_taxonomy(self, taxonomy_folder_name, samples):
         files_of_taxonomy = []

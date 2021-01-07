@@ -35,7 +35,7 @@ __C.CONST.DEVICE                            = '0'
 __C.CONST.RNG_SEED                          = 0
 __C.CONST.IMG_W                             = 224       # Image width for input
 __C.CONST.IMG_H                             = 224       # Image height for input
-__C.CONST.BATCH_SIZE                        = 1
+__C.CONST.BATCH_SIZE                        = 4
 __C.CONST.CROP_IMG_W                        = 128       # Dummy property for Pascal 3D
 __C.CONST.CROP_IMG_H                        = 128       # Dummy property for Pascal 3D
 __C.CONST.BIN_SIZE                          = 15
@@ -57,6 +57,14 @@ __C.NETWORK.LEAKY_VALUE                     = .2
 __C.NETWORK.TCONV_USE_BIAS                  = False
 
 #
+# GraphX
+#
+__C.GRAPHX                                 = edict()
+__C.GRAPHX.USE_GRAPHX                      = True
+__C.GRAPHX.NUM_INIT_POINTS                 = 2048
+
+
+#
 # Training
 #
 __C.TRAIN                                   = edict()
@@ -69,12 +77,11 @@ __C.TRAIN.SATURATION                        = .4
 __C.TRAIN.NOISE_STD                         = .1
 __C.TRAIN.RANDOM_BG_COLOR_RANGE             = [[225, 255], [225, 255], [225, 255]]
 __C.TRAIN.POLICY                            = 'adam'        # available options: sgd, adam
-__C.TRAIN.ENCODER_LEARNING_RATE             = 5e-4
-__C.TRAIN.DECODER_LEARNING_RATE             = 5e-4
+__C.TRAIN.LEARNING_RATE                     = 5e-4
 __C.TRAIN.VIEW_ESTIMATOR_LEARNING_RATE      = 5e-4
-__C.TRAIN.ENCODER_LR_MILESTONES             = [200]
-__C.TRAIN.DECODER_LR_MILESTONES             = [200]
+__C.TRAIN.MILESTONES                        = [200]
 __C.TRAIN.VIEW_ESTIMATOR_LR_MILESTONES      = [200]
+__C.TRAIN.WEIGHT_DECAY                      = 1e-4
 __C.TRAIN.BETAS                             = (.9, .999)
 __C.TRAIN.MOMENTUM                          = .9
 __C.TRAIN.GAMMA                             = .5

@@ -18,10 +18,10 @@ from datetime import datetime as dt
 from pprint import pprint
 
 from config import cfg
-from core.train import train_net
-from core.test import test_net
-from core.evaluate import evaluate_net
-from core.evaluate_hand_draw import evaluate_hand_draw_net
+from core.train_graphx import train_net
+# from core.test import test_net
+# from core.evaluate import evaluate_net
+# from core.evaluate_hand_draw import evaluate_hand_draw_net
 
 
 def get_args_from_command_line():
