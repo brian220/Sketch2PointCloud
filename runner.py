@@ -21,7 +21,7 @@ from config import cfg
 from core.train import train_net
 from core.test import test_net
 from core.evaluate import evaluate_net
-# from core.single_img_test import single_img_test_net
+from core.evaluate_hand_draw import evaluate_hand_draw_net
 
 
 def get_args_from_command_line():
@@ -35,6 +35,7 @@ def get_args_from_command_line():
     parser.add_argument('--train', dest='train', help='Train neural networks', action='store_true')
     parser.add_argument('--test', dest='test', help='Test neural networks', action='store_true')
     parser.add_argument('--evaluate', dest='evaluate', help='Evaluate neural networks', action='store_true')
+    parser.add_argument('--evaluate_hand_draw', dest='evaluate_hand_draw', help='Evaluate neural networks by hand draw sketch', action='store_true')
     parser.add_argument('--batch-size',
                         dest='batch_size',
                         help='name of the net',
@@ -76,6 +77,8 @@ def main():
         test_net(cfg)
     elif args.evaluate:
         evaluate_net(cfg)
+    elif args.evaluate_hand_draw:
+        evaluate_hand_draw_net(cfg)
     else:
         print("Please specify the arguments (--train, --test, --evaluate)")
 

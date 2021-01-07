@@ -103,4 +103,11 @@ __C.EVALUATE.INFO_FILE                      = '/media/itri/Files_2TB/chaoyu/poin
 __C.EVALUATE.RECONSTRUCTION_WEIGHTS         = '/media/itri/Files_2TB/chaoyu/pointcloud3d/output/new_output/checkpoints/2020-12-17T11:56:09.024186/best-reconstruction-ckpt.pth'
 __C.EVALUATE.VIEW_ESTIMATION_WEIGHTS        = '/media/itri/Files_2TB/chaoyu/pointcloud3d/output/new_output/checkpoints/2020-12-17T11:56:09.024186/best-view-ckpt.pth'
 
-
+#
+# Evaluate on the true habd draw image
+#
+__C.EVALUATE_HAND_DRAW                                = edict()
+__C.EVALUATE_HAND_DRAW.INPUT_IMAGE_FOLDER             = '/media/itri/Files_2TB/chaoyu/pointcloud3d/pc3d/evaluate/hand_draw_input_img/'
+__C.EVALUATE_HAND_DRAW.OUTPUT_FOLDER                  = '/media/itri/Files_2TB/chaoyu/pointcloud3d/pc3d/evaluate/hand_draw_output/'
+__C.EVALUATE_HAND_DRAW.RECONSTRUCTION_WEIGHTS         = '/media/itri/Files_2TB/chaoyu/pointcloud3d/output/new_output/checkpoints/2020-12-17T11:56:09.024186/best-reconstruction-ckpt.pth'
+__C.EVALUATE_HAND_DRAW.VIEW_ESTIMATION_WEIGHTS        = '/media/itri/Files_2TB/chaoyu/pointcloud3d/output/new_output/checkpoints/2020-12-17T11:56:09.024186/best-view-ckpt.pth'
