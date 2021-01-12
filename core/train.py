@@ -32,6 +32,7 @@ from losses.delta_loss import DeltaLoss
 
 def train_net(cfg):
     print("cuda is available?", torch.cuda.is_available())
+    print("train")
     
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
     torch.backends.cudnn.benchmark = True
