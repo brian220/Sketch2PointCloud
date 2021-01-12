@@ -41,7 +41,7 @@ def valid_net(cfg,
 
     # Testing loop
     for sample_idx, (taxonomy_names, sample_names, rendering_images,
-                    init_point_clouds, ground_truth_point_clouds, ground_truth_views) in enumerate(train_data_loader):
+                    init_point_clouds, ground_truth_point_clouds, ground_truth_views) in enumerate(test_data_loader):
         with torch.no_grad():
             # Only one image per sample
             rendering_images = torch.squeeze(rendering_images, 1)
@@ -54,11 +54,11 @@ def valid_net(cfg,
             #=================================================#
             #                Test the network                 #
             #=================================================#
-            loss_dict, generated_point_clouds = net.module.loss(img, init_point_clouds, ground_truth_point_clouds, 'mean')
-            reconstruction_loss = to_numpy(loss_dict['chamfer'])
+            loss_dict, generated_point_clouds = net.module.loss(rendering_images, init_point_clouds, ground_truth_point_clouds, 'mean')
+            reconstruction_loss = loss_dict['chamfer'].cpu().detach().data.numpy()
             
             # Append loss and accuracy to average metrics
-            reconstruction_losses.update(reconstruction_loss.item())
+            reconstruction_losses.update(reconstruction_loss)
 
             # Append generated point clouds to TensorBoard
             if output_dir and sample_idx < 3:

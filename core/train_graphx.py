@@ -135,7 +135,6 @@ def train_net(cfg):
             
         # Append epoch loss to TensorBoard
         train_writer.add_scalar('EncoderDecoder/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)
-        print(loss)
 
         # Validate the training models
         current_cd = valid_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, net)
