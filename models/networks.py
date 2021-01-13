@@ -255,7 +255,6 @@ class Pixel2Pointcloud(nn.Module):
     def forward(self, input, init_pc):
         img_feats = self.img_enc(input)
         pc_feats = self.pc_enc(img_feats, init_pc)
-        print("Shape of embedding", pc_feats.size())
         return self.pc(pc_feats)
 
     def loss(self, input, init_pc, gt_pc, reduce='sum'):
