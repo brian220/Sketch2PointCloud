@@ -14,6 +14,7 @@ import torch.nn as nn
 
 from layers.graphx import GraphXConv
 from losses.chamfer_loss import chamfer
+from losses.earth_mover_distance import EMD
 
 Conv = nn.Conv2d
 
@@ -260,17 +261,19 @@ class Pixel2Pointcloud(nn.Module):
 
     def loss(self, input, init_pc, gt_pc, reduce='sum'):
         pred_pc = self(input, init_pc)
-        loss = sum(
-            [normalized_chamfer_loss(pred[None], gt[None], reduce=reduce) for pred, gt in zip(pred_pc, gt_pc)]) / len(
-            gt_pc) if isinstance(gt_pc, (list, tuple)) else normalized_chamfer_loss(pred_pc, gt_pc, reduce=reduce)
-        loss_dict = OrderedDict([('chamfer', loss), ('total', loss)])
-        return loss_dict, pred_pc
+        # loss = sum(
+        #    [normalized_chamfer_loss(pred[None], gt[None], reduce=reduce) for pred, gt in zip(pred_pc, gt_pc)]) / len(
+        #    gt_pc) if isinstance(gt_pc, (list, tuple)) else normalized_chamfer_loss(pred_pc, gt_pc, reduce=reduce)
+        # loss_dict = OrderedDict([('chamfer', loss), ('total', loss)])
+        # Try to use EMD distance to train
+        loss = torch.mean(EMD(pred_pc, gt_pc))
+        return loss, pred_pc
 
     def learn(self, input, init_pc, gt_pc):
         self.train(True)
         self.optimizer.zero_grad()
-        loss_dict, _ = self.loss(input, init_pc, gt_pc, 'mean')
-        loss = loss_dict['total']
+        loss, _ = self.loss(input, init_pc, gt_pc, 'mean')
+        # loss = loss_dict['total']
         loss.backward()
         self.optimizer.step()
         loss_np = loss.detach().item()
