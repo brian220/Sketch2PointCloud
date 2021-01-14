@@ -80,10 +80,19 @@ def train_net(cfg):
 
     print(net)
     
-    init_epoch = 0
-    best_cd = 10000
+    init_epoch = 200
+    best_emd =  10000 # less is better
     best_epoch = -1
+    if 'WEIGHTS' in cfg.CONST and cfg.TRAIN.RESUME_TRAIN:
+        print('[INFO] %s Recovering from %s ...' % (dt.now(), cfg.CONST.WEIGHTS))
+        checkpoint = torch.load(cfg.CONST.WEIGHTS)
+        init_epoch = checkpoint['epoch_idx']
         
+        net.load_state_dict(checkpoint['net'])
+
+        print('[INFO] %s Recover complete. Current epoch #%d at epoch #%d.' %
+              (dt.now(), init_epoch, cfg.TRAIN.NUM_EPOCHES))
+
     # Summary writer for TensorBoard
     output_dir = os.path.join(cfg.DIR.OUT_PATH, '%s', dt.now().isoformat())
     log_dir = output_dir % 'logs'
@@ -137,7 +146,7 @@ def train_net(cfg):
         train_writer.add_scalar('EncoderDecoder/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)
 
         # Validate the training models
-        current_cd = valid_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, net)
+        current_emd = valid_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, net)
 
          # Save weights to file
         if (epoch_idx + 1) % cfg.TRAIN.SAVE_FREQ == 0:
@@ -147,19 +156,19 @@ def train_net(cfg):
             utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'ckpt-epoch-%04d.pth' % (epoch_idx + 1)), 
                                                  epoch_idx + 1, 
                                                  net,
-                                                 best_cd, best_epoch)
+                                                 best_emd, best_epoch)
         
         # Save best check point for cd
-        if current_cd < best_cd:
+        if current_emd < best_emd:
             if not os.path.exists(ckpt_dir):
                 os.makedirs(ckpt_dir)
 
-            best_cd = current_cd
+            best_emd = current_cd
             best_epoch = epoch_idx + 1
             utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'best-reconstruction-ckpt.pth'), 
                                                  epoch_idx + 1, 
                                                  net,
-                                                 best_cd, best_epoch)
+                                                 best_emd, best_epoch)
 
     # Close SummaryWriter for TensorBoard
     train_writer.close()
