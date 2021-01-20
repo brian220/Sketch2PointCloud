@@ -279,10 +279,4 @@ class Pixel2Pointcloud(nn.Module):
         self.optimizer.step()
         loss_np = loss.detach().item()
         del loss
-<<<<<<< HEAD
         return loss_np
-=======
-        return loss_np
-
-  
->>>>>>> 7081f2cb7ab6db22f1b9592c0ccb4b0d1ef12de3
