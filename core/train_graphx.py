@@ -80,7 +80,7 @@ def train_net(cfg):
 
     print(net)
     
-    init_epoch = 200
+    init_epoch = 0
     best_emd =  10000 # less is better
     best_epoch = -1
     if 'WEIGHTS' in cfg.CONST and cfg.TRAIN.RESUME_TRAIN:
@@ -94,7 +94,7 @@ def train_net(cfg):
               (dt.now(), init_epoch, cfg.TRAIN.NUM_EPOCHES))
 
     # Summary writer for TensorBoard
-    output_dir = os.path.join(cfg.DIR.OUT_PATH, '%s', dt.now().isoformat())
+    output_dir = os.path.join(cfg.DIR.OUT_PATH, '%s')
     log_dir = output_dir % 'logs'
     ckpt_dir = output_dir % 'checkpoints'
     train_writer = SummaryWriter(os.path.join(log_dir, 'train'))
@@ -141,7 +141,6 @@ def train_net(cfg):
                  REC_Loss = %.4f'
                 % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val,
                    data_time.val, loss))
-            break
             
         # Append epoch loss to TensorBoard
         train_writer.add_scalar('EncoderDecoder/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)
@@ -164,7 +163,7 @@ def train_net(cfg):
             if not os.path.exists(ckpt_dir):
                 os.makedirs(ckpt_dir)
 
-            best_emd = current_cd
+            best_emd = current_emd
             best_epoch = epoch_idx + 1
             utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'best-reconstruction-ckpt.pth'), 
                                                  epoch_idx + 1, 

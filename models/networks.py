@@ -253,10 +253,11 @@ class Pixel2Pointcloud(nn.Module):
         if torch.cuda.is_available():
             self.cuda()
 
+        self.emd = EMD().cuda()
+
     def forward(self, input, init_pc):
         img_feats = self.img_enc(input)
         pc_feats = self.pc_enc(img_feats, init_pc)
-        print("Shape of embedding", pc_feats.size())
         return self.pc(pc_feats)
 
     def loss(self, input, init_pc, gt_pc, reduce='sum'):
@@ -266,7 +267,7 @@ class Pixel2Pointcloud(nn.Module):
         #    gt_pc) if isinstance(gt_pc, (list, tuple)) else normalized_chamfer_loss(pred_pc, gt_pc, reduce=reduce)
         # loss_dict = OrderedDict([('chamfer', loss), ('total', loss)])
         # Try to use EMD distance to train
-        loss = torch.mean(EMD(pred_pc, gt_pc))
+        loss = torch.mean(self.emd(pred_pc, gt_pc))
         return loss, pred_pc
 
     def learn(self, input, init_pc, gt_pc):
@@ -279,5 +280,3 @@ class Pixel2Pointcloud(nn.Module):
         loss_np = loss.detach().item()
         del loss
         return loss_np
-
-  

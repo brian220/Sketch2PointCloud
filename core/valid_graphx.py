@@ -54,8 +54,8 @@ def valid_net(cfg,
             #=================================================#
             #                Test the network                 #
             #=================================================#
-            loss_dict, generated_point_clouds = net.module.loss(rendering_images, init_point_clouds, ground_truth_point_clouds, 'mean')
-            reconstruction_loss = loss_dict['chamfer'].cpu().detach().data.numpy()
+            loss, generated_point_clouds = net.module.loss(rendering_images, init_point_clouds, ground_truth_point_clouds, 'mean')
+            reconstruction_loss = loss.cpu().detach().data.numpy()
             
             # Append loss and accuracy to average metrics
             reconstruction_losses.update(reconstruction_loss)
