@@ -13,16 +13,16 @@ import torch
 import torch.nn as nn
 
 from layers.graphx import GraphXConv
-from losses.chamfer_loss import chamfer
+# from losses.chamfer_loss import chamfer
 from losses.earth_mover_distance import EMD
 
 Conv = nn.Conv2d
 
-
+'''
 def normalized_chamfer_loss(pred, gt, reduce='sum'):
     loss = chamfer(pred, gt, reduce=reduce)
     return loss if reduce == 'sum' else loss * 3000.
-
+'''
 
 def wrapper(func, *args, **kwargs):
     class Wrapper(nn.Module):
