@@ -13,8 +13,12 @@ import torch
 import torch.nn as nn
 
 from layers.graphx import GraphXConv
+
+from models.projection import Projector
+
 # from losses.chamfer_loss import chamfer
-from losses.earth_mover_distance import EMD
+# from losses.earth_mover_distance import EMD
+from losses.proj_losses import *
 
 Conv = nn.Conv2d
 
@@ -234,9 +238,11 @@ class PointCloudGraphXDecoder(nn.Sequential):
 
 
 class Pixel2Pointcloud(nn.Module):
-    def __init__(self, in_channels, in_instances, activation=nn.ReLU(), optimizer=None, scheduler=None, use_graphx=True, **kwargs):
+    def __init__(self, cfg, in_channels, in_instances, activation=nn.ReLU(), optimizer=None, scheduler=None, use_graphx=True, **kwargs):
         super().__init__()
-
+        self.cfg = cfg
+        
+        # Graphx
         self.img_enc = CNN18Encoder(in_channels, activation)
 
         out_features = [block[-2].out_channels for block in self.img_enc.children()]
@@ -245,35 +251,61 @@ class Pixel2Pointcloud(nn.Module):
         
         deform_net = PointCloudGraphXDecoder if use_graphx else PointCloudDecoder
         self.pc = deform_net(2 * sum(out_features) + 3, in_instances=in_instances, activation=activation)
-
+        
         self.optimizer = None if optimizer is None else optimizer(self.parameters())
         self.scheduler = None if scheduler or optimizer is None else scheduler(self.optimizer)
         self.kwargs = kwargs
+        
+        # self.emd = EMD().cuda()
+
+        # 2D supervision part
+        self.projector = Projector(self.cfg)
+        self.grid_dist_tensor = grid_dist()
+        # proj loss
+        self.proj_loss = ProjectLoss(cfg).cuda()
 
         if torch.cuda.is_available():
             self.cuda()
-
-        self.emd = EMD().cuda()
 
     def forward(self, input, init_pc):
         img_feats = self.img_enc(input)
         pc_feats = self.pc_enc(img_feats, init_pc)
         return self.pc(pc_feats)
 
-    def loss(self, input, init_pc, gt_pc, reduce='sum'):
+    def loss(self, input, init_pc, view_az, view_el, proj_gt):
         pred_pc = self(input, init_pc)
-        # loss = sum(
-        #    [normalized_chamfer_loss(pred[None], gt[None], reduce=reduce) for pred, gt in zip(pred_pc, gt_pc)]) / len(
-        #    gt_pc) if isinstance(gt_pc, (list, tuple)) else normalized_chamfer_loss(pred_pc, gt_pc, reduce=reduce)
-        # loss_dict = OrderedDict([('chamfer', loss), ('total', loss)])
-        # Try to use EMD distance to train
-        loss = torch.mean(self.emd(pred_pc, gt_pc))
+
+        # Use 2D projection loss to train
+        proj_pred = {}
+        loss_bce = {}
+        fwd = {}
+        bwd = {}
+        loss_fwd = {}
+        loss_bwd = {}
+        loss = 0.
+        for idx in range(0, self.cfg.PROJECTION.NUM_VIEWS):
+            # Projection
+            proj_pred[idx] = self.projector(pred_pc, view_az[:,idx], view_el[:,idx])
+            
+            # Loss
+            loss_bce[idx], fwd[idx], bwd[idx] = self.proj_loss(preds=proj_pred[idx], 
+                                                               gts=proj_gt[:,idx], 
+                                                               grid_dist_tensor=self.grid_dist_tensor)
+            loss_fwd[idx] = 1e-4 * torch.mean(fwd)
+            loss_bwd[idx] = 1e-4 * torch.mean(bwd)
+            
+            loss += cfg.PROJECTION.LAMDA_BCE * torch.mean(loss_bce[idx]) +\
+                        cfg.PROJECTION.LAMDA_AFF_FWD * torch.mean(loss_fwd[idx]) +\
+                        cfg.PROJECTION.LAMDA_AFF_BWD * torch.mean(loss_bwd[idx])
+        
+        loss = (loss / self.cfg.PROJECTION.NUM_VIEWS)
+
         return loss, pred_pc
 
-    def learn(self, input, init_pc, gt_pc):
+    def learn(self, input, init_pc, view_az, view_el, proj_gt):
         self.train(True)
         self.optimizer.zero_grad()
-        loss, _ = self.loss(input, init_pc, gt_pc, 'mean')
+        loss, _ = self.loss(input, init_pc, view_az, view_el, proj_gt)
         # loss = loss_dict['total']
         loss.backward()
         self.optimizer.step()

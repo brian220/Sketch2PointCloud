@@ -22,6 +22,7 @@ __C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/FECA2C89CA2C406F/sket
 # Dataset
 #
 __C.DATASET                                 = edict()
+__C.DATASET.TOTAL_VIEWS                     = 10
 __C.DATASET.MEAN                            = [0.5, 0.5, 0.5]
 __C.DATASET.STD                             = [0.5, 0.5, 0.5]
 __C.DATASET.TRAIN_DATASET                   = 'ShapeNet'
@@ -63,6 +64,17 @@ __C.GRAPHX                                 = edict()
 __C.GRAPHX.USE_GRAPHX                      = True
 __C.GRAPHX.NUM_INIT_POINTS                 = 2048
 
+#
+# Continuous Projection
+#
+__C.PROJECTION                             = edict()
+__C.PROJECTION.GRID_H                      = 64
+__C.PROJECTION.GRID_W                      = 64
+__C.PROJECTION.SIGMA_SQ                    = 0.5
+__C.PROJECTION.NUM_VIEWS                   = 4
+__C.PROJECTION.LAMDA_BCE                   = 1.
+__C.PROJECTION.LAMDA_AFF_FWD               = 1.
+__C.PROJECTION.LAMDA_AFF_BWD               = 1.
 
 #
 # Training
