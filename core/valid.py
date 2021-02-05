@@ -41,20 +41,24 @@ def valid_net(cfg,
 
     # Testing loop
     for sample_idx, (taxonomy_names, sample_names, rendering_images,
-                    init_point_clouds, ground_truth_point_clouds, ground_truth_views) in enumerate(test_data_loader):
+                    model_gt, model_x, model_y,
+                    init_point_clouds, ground_truth_point_clouds) in enumerate(test_data_loader):
         with torch.no_grad():
             # Only one image per sample
             rendering_images = torch.squeeze(rendering_images, 1)
 
             # Get data from data loader
             rendering_images = utils.network_utils.var_or_cuda(rendering_images)
+            model_gt = utils.network_utils.var_or_cuda(model_gt)
+            model_x = utils.network_utils.var_or_cuda(model_x)
+            model_y = utils.network_utils.var_or_cuda(model_y)
             init_point_clouds = utils.network_utils.var_or_cuda(init_point_clouds)
             ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
 
             #=================================================#
             #                Test the network                 #
             #=================================================#
-            loss, generated_point_clouds = net.module.loss(rendering_images, init_point_clouds, ground_truth_point_clouds, 'mean')
+            loss, generated_point_clouds = net.module.loss(rendering_images, init_point_clouds, model_x, model_y, model_gt)
             reconstruction_loss = loss.cpu().detach().data.numpy()
             
             # Append loss and accuracy to average metrics
@@ -72,7 +76,7 @@ def valid_net(cfg,
                 
                 # Groundtruth Pointcloud
                 gt_pc = ground_truth_point_clouds[0].detach().cpu().numpy()
-                ground_truth_view = ground_truth_views[0].detach().cpu().numpy()
+                # ground_truth_view = ground_truth_views[0].detach().cpu().numpy()
                 rendering_views = utils.point_cloud_visualization.get_point_cloud_image(gt_pc, os.path.join(img_dir, 'test'),
                                                                                         epoch_idx, "ground truth")
                 test_writer.add_image('Test Sample#%02d/Point Cloud GroundTruth' % sample_idx, rendering_views, epoch_idx)

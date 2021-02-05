@@ -14,9 +14,10 @@ __C.DATASETS                                = edict()
 __C.DATASETS.SHAPENET                       = edict()
 __C.DATASETS.SHAPENET.TAXONOMY_FILE_PATH    = './datasets/rec.json'
 
-__C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/ShapeNetRendering_copy/%s/%s/rendering/%02d.png'
+__C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/FECA2C89CA2C406F/sketch3D/drc/cachedir/blenderRenderPreprocess/%s/%s/render_%d.png'
+__C.DATASETS.SHAPENET.DEPTH_PATH            = '/media/caig/FECA2C89CA2C406F/sketch3D/drc/cachedir/blenderRenderPreprocess/%s/%s/depth_%d.png'
 __C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/shape_net_core_uniform_samples_2048/%s/%s.ply'
-__C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/ShapeNetRendering_copy/%s/%s/rendering/rendering_metadata.txt'
+__C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/FECA2C89CA2C406F/sketch3D/drc/cachedir/blenderRenderPreprocess/%s/%s/view.txt'
 
 #
 # Dataset
@@ -47,7 +48,7 @@ __C.CONST.NUM_POINTS                        = 2048
 # Directories
 #
 __C.DIR                                     = edict()
-__C.DIR.OUT_PATH                            = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/output'
+__C.DIR.OUT_PATH                            = '/media/caig/FECA2C89CA2C406F/sketch3D/2d_supervision/output'
 __C.DIR.RANDOM_BG_PATH                      = '/home/hzxie/Datasets/SUN2012/JPEGImages'
 
 #

@@ -20,7 +20,7 @@ from datetime import datetime as dt
 from tensorboardX import SummaryWriter
 from time import time
 
-from core.valid_graphx import valid_net
+from core.valid import valid_net
 from models.networks import Pixel2Pointcloud
 
 def train_net(cfg):
@@ -70,7 +70,7 @@ def train_net(cfg):
 
     # Set up networks
     # The parameters here need to be set in cfg
-    net = Pixel2Pointcloud(3, cfg.GRAPHX.NUM_INIT_POINTS,
+    net = Pixel2Pointcloud(cfg, 3, cfg.GRAPHX.NUM_INIT_POINTS,
                         optimizer=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.LEARNING_RATE, weight_decay=cfg.TRAIN.WEIGHT_DECAY),
                         scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
                         use_graphx=cfg.GRAPHX.USE_GRAPHX)
@@ -81,8 +81,10 @@ def train_net(cfg):
     print(net)
     
     init_epoch = 0
-    best_emd =  10000 # less is better
+    # best_emd =  10000 # less is better
+    best_loss = 100000
     best_epoch = -1
+    """
     if 'WEIGHTS' in cfg.CONST and cfg.TRAIN.RESUME_TRAIN:
         print('[INFO] %s Recovering from %s ...' % (dt.now(), cfg.CONST.WEIGHTS))
         checkpoint = torch.load(cfg.CONST.WEIGHTS)
@@ -92,6 +94,7 @@ def train_net(cfg):
 
         print('[INFO] %s Recover complete. Current epoch #%d at epoch #%d.' %
               (dt.now(), init_epoch, cfg.TRAIN.NUM_EPOCHES))
+    """
 
     # Summary writer for TensorBoard
     output_dir = os.path.join(cfg.DIR.OUT_PATH, '%s')
@@ -99,7 +102,6 @@ def train_net(cfg):
     ckpt_dir = output_dir % 'checkpoints'
     train_writer = SummaryWriter(os.path.join(log_dir, 'train'))
     val_writer = SummaryWriter(os.path.join(log_dir, 'test'))
-
 
     # Training loop
     for epoch_idx in range(init_epoch, cfg.TRAIN.NUM_EPOCHES):
@@ -116,7 +118,8 @@ def train_net(cfg):
         batch_end_time = time()
         n_batches = len(train_data_loader)
         for batch_idx, (taxonomy_names, sample_names, rendering_images,
-                        init_point_clouds, ground_truth_point_clouds, ground_truth_views) in enumerate(train_data_loader):
+                        model_gt, model_x, model_y,
+                        init_point_clouds, ground_truth_point_clouds) in enumerate(train_data_loader):
 
             # Measure data time
             data_time.update(time() - batch_end_time)
@@ -126,10 +129,12 @@ def train_net(cfg):
 
             # Get data from data loader
             rendering_images = utils.network_utils.var_or_cuda(rendering_images)
+            model_gt = utils.network_utils.var_or_cuda(model_gt)
+            model_x = utils.network_utils.var_or_cuda(model_x)
+            model_y = utils.network_utils.var_or_cuda(model_y)
             init_point_clouds = utils.network_utils.var_or_cuda(init_point_clouds)
-            ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
-    
-            loss = net.module.learn(rendering_images, init_point_clouds, ground_truth_point_clouds)
+
+            loss = net.module.learn(rendering_images, init_point_clouds, model_x, model_y, model_gt)
             
             reconstruction_losses.update(loss)
 
@@ -146,9 +151,9 @@ def train_net(cfg):
         train_writer.add_scalar('EncoderDecoder/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)
 
         # Validate the training models
-        current_emd = valid_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, net)
-
-         # Save weights to file
+        current_loss = valid_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, net)
+        
+        # Save weights to file
         if (epoch_idx + 1) % cfg.TRAIN.SAVE_FREQ == 0:
             if not os.path.exists(ckpt_dir):
                 os.makedirs(ckpt_dir)
@@ -156,23 +161,24 @@ def train_net(cfg):
             utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'ckpt-epoch-%04d.pth' % (epoch_idx + 1)), 
                                                  epoch_idx + 1, 
                                                  net,
-                                                 best_emd, best_epoch)
+                                                 best_loss, best_epoch)
         
         # Save best check point for cd
-        if current_emd < best_emd:
+        if current_loss < best_loss:
             if not os.path.exists(ckpt_dir):
                 os.makedirs(ckpt_dir)
 
-            best_emd = current_emd
+            best_loss = current_loss
             best_epoch = epoch_idx + 1
             utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'best-reconstruction-ckpt.pth'), 
                                                  epoch_idx + 1, 
                                                  net,
-                                                 best_emd, best_epoch)
+                                                 best_loss, best_epoch)
 
     # Close SummaryWriter for TensorBoard
     train_writer.close()
     val_writer.close()
+
 
         
 

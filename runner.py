@@ -18,10 +18,10 @@ from datetime import datetime as dt
 from pprint import pprint
 
 from config import cfg
-from core.train_graphx import train_net
-from core.test_graphx import test_net
-from core.evaluate_graphx import evaluate_net
-from core.evaluate_graphx_fixed_view import evaluate_fixed_view_net
+from core.train import train_net
+# from core.test_graphx import test_net
+# from core.evaluate_graphx import evaluate_net
+# from core.evaluate_graphx_fixed_view import evaluate_fixed_view_net
 # from core.evaluate_hand_draw import evaluate_hand_draw_net
 
 
@@ -75,6 +75,9 @@ def main():
     # Start train/test process
     if args.train:
         train_net(cfg)
+    else:
+        print("Please specify the arguments (--train, --test, --evaluate)")
+    """
     elif args.test:
         test_net(cfg)
     elif args.evaluate:
@@ -83,9 +86,7 @@ def main():
         evaluate_hand_draw_net(cfg)
     elif args.evaluate_fixed_view:
         evaluate_fixed_view_net(cfg)
-    else:
-        print("Please specify the arguments (--train, --test, --evaluate)")
-
+    """
 
 if __name__ == '__main__':
     # Check python version
