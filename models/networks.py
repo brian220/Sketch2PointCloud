@@ -295,14 +295,18 @@ class Pixel2Pointcloud(nn.Module):
             loss_bce[idx], fwd[idx], bwd[idx] = self.proj_loss(preds=proj_pred[idx], 
                                                                gts=proj_gt[:,idx], 
                                                                grid_dist_tensor=self.grid_dist_tensor)
-            loss_fwd[idx] = 1e-4 * torch.mean(fwd[idx])
-            loss_bwd[idx] = 1e-4 * torch.mean(bwd[idx])
-            
+
+            loss += torch.mean(loss_bce[idx])
+
+            # loss_fwd[idx] = 1e-4 * torch.mean(fwd[idx])
+            # loss_bwd[idx] = 1e-4 * torch.mean(bwd[idx])
+            """
             loss += self.cfg.PROJECTION.LAMDA_BCE * torch.mean(loss_bce[idx]) +\
                         self.cfg.PROJECTION.LAMDA_AFF_FWD * loss_fwd[idx] +\
-                        self.cfg.PROJECTION.LAMDA_AFF_BWD * loss_bwd[idx]
+                        self.cfg.PROJECTION.LAMDA_AFF_BWD * loss_bwd[idx]"""
         
         loss = (loss / self.cfg.PROJECTION.NUM_VIEWS)
+        print("Loss", loss)
 
         return loss, pred_pc
 

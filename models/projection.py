@@ -23,7 +23,7 @@ class Projector(torch.nn.Module):
     '''
     def __init__(self, cfg):
         super(Projector, self).__init__()
-        self.batch_size = cfg.CONST.BATCH_SIZE
+        # self.batch_size = cfg.CONST.BATCH_SIZE
         self.n_pts = cfg.CONST.NUM_POINTS
         self.grid_h = cfg.PROJECTION.GRID_H
         self.grid_w = cfg.PROJECTION.GRID_W
@@ -32,10 +32,11 @@ class Projector(torch.nn.Module):
 
     def forward(self, xyz, az, el):
         # World co-ordinates to camera co-ordinates
-        pcl_out_rot = self.world2cam(xyz, az, el, batch_size=self.batch_size, N_PTS=self.n_pts)
+        batch_size = xyz.size(0)
+        pcl_out_rot = self.world2cam(xyz, az, el, batch_size=batch_size, N_PTS=self.n_pts)
 
         # Perspective transform
-        pcl_out_persp = self.perspective_transform(pcl_out_rot, batch_size=self.batch_size)
+        pcl_out_persp = self.perspective_transform(pcl_out_rot, batch_size=batch_size)
 
         # 3D to 2D Projection
         proj_pred = self.cont_proj(pcl_out_persp, grid_h=self.grid_h, grid_w=self.grid_w, sigma_sq=self.sigma_sq)
@@ -111,11 +112,11 @@ class Projector(torch.nn.Module):
         K = np.tile(K, [batch_size,1,1])
         K = torch.from_numpy(K)
         K = utils.network_utils.var_or_cuda(K)
-    
+
         xyz_out = torch.matmul(K, xyz.permute(0, 2, 1))
         xy_out = xyz_out[:,:2]/abs(torch.unsqueeze(xyz[:,:,2],1))
         xyz_out = torch.cat([xy_out, abs(xyz_out[:,2:])],dim=1)
-    
+
         return xyz_out.permute(0, 2, 1)
     
     
@@ -169,6 +170,6 @@ class Projector(torch.nn.Module):
         tr_mat = utils.network_utils.var_or_cuda(tr_mat) # [B,1024,3]
 
         xyz_out = torch.matmul(rotmat, xyz.permute(0, 2, 1)) - tr_mat.permute(0, 2, 1)
-        
+
         return xyz_out.permute(0, 2, 1)
 

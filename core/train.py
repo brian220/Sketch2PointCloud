@@ -11,6 +11,7 @@ import random
 import torch
 import torch.backends.cudnn
 import torch.utils.data
+import torchvision.utils
 
 import utils.data_loaders
 import utils.data_transforms
@@ -21,10 +22,11 @@ from tensorboardX import SummaryWriter
 from time import time
 
 from core.valid import valid_net
-from models.networks import Pixel2Pointcloud
+from models.networks_psgn import Pixel2Pointcloud
 
 def train_net(cfg):
     print("cuda is available?", torch.cuda.is_available())
+    print("Let's use", torch.cuda.device_count(), "GPUs!")
 
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
     torch.backends.cudnn.benchmark = True
@@ -76,7 +78,7 @@ def train_net(cfg):
                         use_graphx=cfg.GRAPHX.USE_GRAPHX)
 
     if torch.cuda.is_available():
-       net = torch.nn.DataParallel(net).cuda() 
+       net = torch.nn.DataParallel(net, device_ids=cfg.CONST.DEVICE).cuda() 
 
     print(net)
     
@@ -107,7 +109,7 @@ def train_net(cfg):
     for epoch_idx in range(init_epoch, cfg.TRAIN.NUM_EPOCHES):
         # Tick / tock
         epoch_start_time = time()
-
+    
         # Batch average meterics
         batch_time = utils.network_utils.AverageMeter()
         data_time = utils.network_utils.AverageMeter()
@@ -174,6 +176,7 @@ def train_net(cfg):
                                                  epoch_idx + 1, 
                                                  net,
                                                  best_loss, best_epoch)
+        
 
     # Close SummaryWriter for TensorBoard
     train_writer.close()

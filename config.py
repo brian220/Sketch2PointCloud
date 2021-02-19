@@ -34,15 +34,16 @@ __C.DATASET.CLASS                           = 'chair'
 # Common
 #
 __C.CONST                                   = edict()
-__C.CONST.DEVICE                            = '0'
+__C.CONST.DEVICE                            = [0]
+__C.CONST.DEVICE_NUM                        = 1
 __C.CONST.RNG_SEED                          = 0
-__C.CONST.IMG_W                             = 224       # Image width for input
-__C.CONST.IMG_H                             = 224       # Image height for input
-__C.CONST.BATCH_SIZE                        = 1
-__C.CONST.CROP_IMG_W                        = 128       # Dummy property for Pascal 3D
-__C.CONST.CROP_IMG_H                        = 128       # Dummy property for Pascal 3D
+__C.CONST.IMG_W                             = 64       # Image width for input
+__C.CONST.IMG_H                             = 64       # Image height for input
+__C.CONST.BATCH_SIZE                        = 2
+__C.CONST.CROP_IMG_W                        = 200       # Dummy property for Pascal 3D
+__C.CONST.CROP_IMG_H                        = 200       # Dummy property for Pascal 3D
 __C.CONST.BIN_SIZE                          = 15
-__C.CONST.NUM_POINTS                        = 2048
+__C.CONST.NUM_POINTS                        = 1024
 
 #
 # Directories

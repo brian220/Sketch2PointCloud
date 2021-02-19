@@ -8,7 +8,7 @@ import os
 # It is required for projection='3d' in add_subplot()
 from mpl_toolkits.mplot3d import Axes3D
 
-def get_point_cloud_image(generate_point_cloud, save_dir, n_itr, img_type, view=[240, 10]):
+def get_point_cloud_image(generate_point_cloud, save_dir, sample_id, n_itr, img_type, view=[240, 10]):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
     
@@ -24,7 +24,7 @@ def get_point_cloud_image(generate_point_cloud, save_dir, n_itr, img_type, view=
             elev=view[1]
         )
     
-    save_path = os.path.join(save_dir, 'pcs-%06d %s.png' % (n_itr, img_type))
+    save_path = os.path.join(save_dir, 'pcs%d-%06d %s.png' % (sample_id,  n_itr, img_type))
     fig.savefig(save_path)
     plt.close(fig)
 

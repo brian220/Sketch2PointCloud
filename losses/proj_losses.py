@@ -5,6 +5,8 @@ import numpy as np
 import torch
 from scipy.spatial.distance import cdist as np_cdist
 
+import utils.network_utils
+
 class ProjectLoss(torch.nn.Module):
     def __init__(self, cfg):
         super(ProjectLoss, self).__init__()
@@ -12,19 +14,17 @@ class ProjectLoss(torch.nn.Module):
         self.grid_h = cfg.PROJECTION.GRID_H
         self.grid_w = cfg.PROJECTION.GRID_W
     
-
     def forward(self, preds, gts, grid_dist_tensor):
         loss, fwd, bwd = self.get_loss_proj(preds, gts, 
                                             loss_type='bce_prob',  w=1.0, min_dist_loss=True, dist_mat=grid_dist_tensor, args=None, 
                                             grid_h=self.grid_h, grid_w=self.grid_w)
         return loss, fwd, bwd
 
-
     def get_loss_proj(self, pred, gt, loss_type='bce', w=1., min_dist_loss=None,
                       dist_mat=None, args=None, grid_h=64, grid_w=64):
-        
+
         if loss_type == 'bce':
-            print ('\nBCE Logits Loss\n')
+            # print ('\nBCE Logits Loss\n')
             loss_function = torch.nn.BCEWithLogitsLoss(weight = None, reduction='none')
             loss = loss_function(pred, gt)
         """
@@ -41,7 +41,7 @@ class ProjectLoss(torch.nn.Module):
             loss = abs(pred-gt)
         """
         if loss_type == 'bce_prob':
-            # print ('\nBCE Loss\n')
+            # clprint ('\nBCE Loss\n')
             epsilon = 1e-8
             loss = -gt*torch.log(pred+epsilon)*w - (1-gt)*torch.log(torch.abs(1-pred-epsilon))
     

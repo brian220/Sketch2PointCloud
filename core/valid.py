@@ -21,8 +21,6 @@ import utils.view_pred_utils
 
 from datetime import datetime as dt
 
-from models.networks import Pixel2Pointcloud
-
 def valid_net(cfg,
              epoch_idx=-1,
              output_dir=None,
@@ -43,6 +41,7 @@ def valid_net(cfg,
     for sample_idx, (taxonomy_names, sample_names, rendering_images,
                     model_gt, model_x, model_y,
                     init_point_clouds, ground_truth_point_clouds) in enumerate(test_data_loader):
+
         with torch.no_grad():
             # Only one image per sample
             rendering_images = torch.squeeze(rendering_images, 1)
@@ -71,17 +70,21 @@ def valid_net(cfg,
                 # Predict Pointcloud
                 g_pc = generated_point_clouds[0].detach().cpu().numpy()
                 rendering_views = utils.point_cloud_visualization.get_point_cloud_image(g_pc, os.path.join(img_dir, 'test'),
-                                                                                        epoch_idx, "reconstruction")
+                                                                                        sample_idx, epoch_idx, "reconstruction")
                 test_writer.add_image('Test Sample#%02d/Point Cloud Reconstructed' % sample_idx, rendering_views, epoch_idx)
                 
                 # Groundtruth Pointcloud
                 gt_pc = ground_truth_point_clouds[0].detach().cpu().numpy()
                 # ground_truth_view = ground_truth_views[0].detach().cpu().numpy()
                 rendering_views = utils.point_cloud_visualization.get_point_cloud_image(gt_pc, os.path.join(img_dir, 'test'),
-                                                                                        epoch_idx, "ground truth")
+                                                                                        sample_idx, epoch_idx, "ground truth")
                 test_writer.add_image('Test Sample#%02d/Point Cloud GroundTruth' % sample_idx, rendering_views, epoch_idx)
+        
+        # only test first 20 samples
+        if sample_idx == 19:
+            break
 
-            if test_writer is not None:
-               test_writer.add_scalar('EncoderDecoder/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx)
+    if test_writer is not None:
+        test_writer.add_scalar('EncoderDecoder/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx)
 
-            return reconstruction_losses.avg
+    return reconstruction_losses.avg
