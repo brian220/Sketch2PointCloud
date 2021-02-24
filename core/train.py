@@ -36,19 +36,19 @@ def train_net(cfg):
     CROP_SIZE = cfg.CONST.CROP_IMG_H, cfg.CONST.CROP_IMG_W
 
     train_transforms = utils.data_transforms.Compose([
-        utils.data_transforms.RandomCrop(IMG_SIZE, CROP_SIZE),
-        utils.data_transforms.RandomBackground(cfg.TRAIN.RANDOM_BG_COLOR_RANGE),
-        utils.data_transforms.ColorJitter(cfg.TRAIN.BRIGHTNESS, cfg.TRAIN.CONTRAST, cfg.TRAIN.SATURATION),
-        utils.data_transforms.RandomNoise(cfg.TRAIN.NOISE_STD),
-        utils.data_transforms.Normalize(mean=cfg.DATASET.MEAN, std=cfg.DATASET.STD),
+        # utils.data_transforms.RandomCrop(IMG_SIZE, CROP_SIZE),
+        # utils.data_transforms.RandomBackground(cfg.TRAIN.RANDOM_BG_COLOR_RANGE),
+        # utils.data_transforms.ColorJitter(cfg.TRAIN.BRIGHTNESS, cfg.TRAIN.CONTRAST, cfg.TRAIN.SATURATION),
+        # utils.data_transforms.RandomNoise(cfg.TRAIN.NOISE_STD),
+        # utils.data_transforms.Normalize(mean=cfg.DATASET.MEAN, std=cfg.DATASET.STD),
         # utils.data_transforms.RandomFlip(), # Disable the random flip to avoid problem in view estimation
         # utils.data_transforms.RandomPermuteRGB(), # Sketch data is gray scale image, no need to permute RGB
         utils.data_transforms.ToTensor(),
     ])
     val_transforms = utils.data_transforms.Compose([
-        utils.data_transforms.CenterCrop(IMG_SIZE, CROP_SIZE),
-        utils.data_transforms.RandomBackground(cfg.TEST.RANDOM_BG_COLOR_RANGE),
-        utils.data_transforms.Normalize(mean=cfg.DATASET.MEAN, std=cfg.DATASET.STD),
+        # utils.data_transforms.CenterCrop(IMG_SIZE, CROP_SIZE),
+        # utils.data_transforms.RandomBackground(cfg.TEST.RANDOM_BG_COLOR_RANGE),
+        # utils.data_transforms.Normalize(mean=cfg.DATASET.MEAN, std=cfg.DATASET.STD),
         utils.data_transforms.ToTensor(),
     ])
 
@@ -73,7 +73,8 @@ def train_net(cfg):
     # Set up networks
     # The parameters here need to be set in cfg
     net = Pixel2Pointcloud(cfg, 3, cfg.GRAPHX.NUM_INIT_POINTS,
-                        optimizer=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.LEARNING_RATE, weight_decay=cfg.TRAIN.WEIGHT_DECAY),
+                        optimizer_encode=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.LEARNING_RATE, weight_decay=cfg.TRAIN.ENCODE_WEIGHT_DECAY),
+                        optimizer_decode=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.LEARNING_RATE, weight_decay=cfg.TRAIN.DECODE_WEIGHT_DECAY),
                         scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
                         use_graphx=cfg.GRAPHX.USE_GRAPHX)
 
@@ -120,7 +121,7 @@ def train_net(cfg):
         batch_end_time = time()
         n_batches = len(train_data_loader)
         for batch_idx, (taxonomy_names, sample_names, rendering_images,
-                        model_gt, model_x, model_y,
+                        model_gt, edge_gt, model_x, model_y,
                         init_point_clouds, ground_truth_point_clouds) in enumerate(train_data_loader):
 
             # Measure data time
@@ -132,11 +133,12 @@ def train_net(cfg):
             # Get data from data loader
             rendering_images = utils.network_utils.var_or_cuda(rendering_images)
             model_gt = utils.network_utils.var_or_cuda(model_gt)
+            edge_gt = utils.network_utils.var_or_cuda(edge_gt)
             model_x = utils.network_utils.var_or_cuda(model_x)
             model_y = utils.network_utils.var_or_cuda(model_y)
             init_point_clouds = utils.network_utils.var_or_cuda(init_point_clouds)
 
-            loss = net.module.learn(rendering_images, init_point_clouds, model_x, model_y, model_gt)
+            loss = net.module.learn(rendering_images, init_point_clouds, model_x, model_y, model_gt, edge_gt)
             
             reconstruction_losses.update(loss)
 
@@ -156,6 +158,7 @@ def train_net(cfg):
         current_loss = valid_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, net)
         
         # Save weights to file
+        
         if (epoch_idx + 1) % cfg.TRAIN.SAVE_FREQ == 0:
             if not os.path.exists(ckpt_dir):
                 os.makedirs(ckpt_dir)
@@ -176,6 +179,7 @@ def train_net(cfg):
                                                  epoch_idx + 1, 
                                                  net,
                                                  best_loss, best_epoch)
+    
         
 
     # Close SummaryWriter for TensorBoard

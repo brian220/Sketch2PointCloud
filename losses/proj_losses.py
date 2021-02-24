@@ -8,6 +8,7 @@ from scipy.spatial.distance import cdist as np_cdist
 import utils.network_utils
 
 class ProjectLoss(torch.nn.Module):
+    
     def __init__(self, cfg):
         super(ProjectLoss, self).__init__()
         self.use_cuda = torch.cuda.is_available()
@@ -22,6 +23,11 @@ class ProjectLoss(torch.nn.Module):
 
     def get_loss_proj(self, pred, gt, loss_type='bce', w=1., min_dist_loss=None,
                       dist_mat=None, args=None, grid_h=64, grid_w=64):
+        """
+        Compute projection loss (bce + affinity loss)
+        args:
+        
+        """
 
         if loss_type == 'bce':
             # print ('\nBCE Logits Loss\n')

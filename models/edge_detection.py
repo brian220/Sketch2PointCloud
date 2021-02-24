@@ -12,12 +12,10 @@ class EdgeDetector(nn.Module):
     returns:
         normalize_grad_mag: normalized edge value between [0, 1], size: (BS, 1, H, W)
     '''
-    
-    def __init__(self, threshold=10.0, use_cuda=False):
-        super(EdgeDetector, self).__init__()
 
-        self.threshold = threshold
-        self.use_cuda = use_cuda
+    def __init__(self, cfg):
+        super(EdgeDetector, self).__init__()
+        self.cfg = cfg
 
         filter_size = 5
         generated_filters = gaussian(filter_size,std=1.0).reshape([1,filter_size])
@@ -48,8 +46,9 @@ class EdgeDetector(nn.Module):
         grad_x = self.sobel_filter_horizontal(blurred_img)
         grad_y = self.sobel_filter_vertical(blurred_img)
 
-        # COMPUTE THICK EDGES
-        grad_mag = torch.sqrt(grad_x**2 + grad_y**2)
+        # compute thick edges
+        epsilon = 1.e-8
+        grad_mag = torch.sqrt(grad_x**2 + grad_y**2 + epsilon)
         
         # devide the max value to move the value between [0, 1]
         B, C, H, W = grad_mag.shape

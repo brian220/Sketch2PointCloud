@@ -58,14 +58,14 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
 
     def __getitem__(self, idx):
         taxonomy_name, sample_name, rendering_images, \
-        model_gt, model_x, model_y, \
+        model_gt, edge_gt, model_x, model_y, \
         init_point_cloud, ground_truth_point_cloud = self.get_datum(idx)
 
         if self.transforms:
             rendering_images = self.transforms(rendering_images)
 
         return (taxonomy_name, sample_name, rendering_images,
-                model_gt, model_x, model_y, 
+                model_gt, edge_gt, model_x, model_y, 
                 init_point_cloud, ground_truth_point_cloud)
 
     def get_datum(self, idx):
@@ -88,7 +88,10 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         # read the test, train image
         # print(selected_rendering_image_path)
         rendering_images = []
-        rendering_image =  cv2.imread(selected_rendering_image_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.
+        # rendering_image =  cv2.imread(selected_rendering_image_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.
+        rendering_image = cv2.imread(selected_rendering_image_path).astype(np.float32) / 255.
+        rendering_image = cv2.resize(rendering_image, (self.grid_h, self.grid_w))
+        rendering_image = cv2.cvtColor(rendering_image, cv2.COLOR_BGR2RGB)
 
         if len(rendering_image.shape) < 3:
             print('[FATAL] %s It seems that there is something wrong with the image file %s' %
@@ -98,6 +101,7 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         
         # read the ground truth proj images and views (multi-views)
         model_gt = []
+        edge_gt = []
         model_x = []
         model_y = []
         for idx in range(0, self.proj_num_views):
@@ -107,8 +111,15 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
             ip_proj = cv2.resize(ip_proj, (self.grid_h,self.grid_w))
             ip_proj[ip_proj<254] = 1
             ip_proj[ip_proj>=254] = 0
+
+            # get the gt edge proj by cv2.findContours
+            edge_proj = ip_proj
+            cv2.findContours(edge_proj, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+            edge_proj = edge_proj.astype(np.float32)
             ip_proj = ip_proj.astype(np.float32)
             model_gt.append(ip_proj)
+            edge_gt.append(edge_proj)
 
             # read the views
             model_x.append(radian_x[idx])
@@ -123,12 +134,13 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         # convert to np array
         rendering_images = np.array(rendering_images).astype(np.float32)
         model_gt = np.array(model_gt).astype(np.float32)
+        edge_gt = np.array(edge_gt).astype(np.float32)
         model_x = np.array(model_x).astype(np.float32)
         model_y = np.array(model_y).astype(np.float32)
         ground_truth_point_cloud = np.array(ground_truth_point_cloud.points).astype(np.float32)
 
         return (taxonomy_name, sample_name, rendering_images,
-                model_gt, model_x, model_y,
+                model_gt, edge_gt, model_x, model_y,
                 init_pointcloud_loader(self.init_num_points), ground_truth_point_cloud)
 
 

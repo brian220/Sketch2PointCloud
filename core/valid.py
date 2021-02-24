@@ -39,7 +39,7 @@ def valid_net(cfg,
 
     # Testing loop
     for sample_idx, (taxonomy_names, sample_names, rendering_images,
-                    model_gt, model_x, model_y,
+                    model_gt, edge_gt, model_x, model_y,
                     init_point_clouds, ground_truth_point_clouds) in enumerate(test_data_loader):
 
         with torch.no_grad():
@@ -49,6 +49,7 @@ def valid_net(cfg,
             # Get data from data loader
             rendering_images = utils.network_utils.var_or_cuda(rendering_images)
             model_gt = utils.network_utils.var_or_cuda(model_gt)
+            edge_gt = utils.network_utils.var_or_cuda(edge_gt)
             model_x = utils.network_utils.var_or_cuda(model_x)
             model_y = utils.network_utils.var_or_cuda(model_y)
             init_point_clouds = utils.network_utils.var_or_cuda(init_point_clouds)
@@ -57,7 +58,7 @@ def valid_net(cfg,
             #=================================================#
             #                Test the network                 #
             #=================================================#
-            loss, generated_point_clouds = net.module.loss(rendering_images, init_point_clouds, model_x, model_y, model_gt)
+            loss, generated_point_clouds = net.module.loss(rendering_images, init_point_clouds, model_x, model_y, model_gt, edge_gt)
             reconstruction_loss = loss.cpu().detach().data.numpy()
             
             # Append loss and accuracy to average metrics
