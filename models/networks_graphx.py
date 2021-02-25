@@ -64,7 +64,7 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
         pc_feats = self.pc_enc(img_feats, init_pc)
         return self.pc(pc_feats)
 
-    def loss(self, input, init_pc, view_az, view_el, proj_gt):
+    def loss(self, input, init_pc, view_az, view_el, proj_gt, edge_gt):
         pred_pc = self(input, init_pc)
 
         grid_dist_np = grid_dist(grid_h=self.cfg.PROJECTION.GRID_H, grid_w=self.cfg.PROJECTION.GRID_W).astype(np.float32)
@@ -124,11 +124,10 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
         
         return total_loss, pred_pc
 
-    def learn(self, input, init_pc, view_az, view_el, proj_gt):
+    def learn(self, input, init_pc, view_az, view_el, proj_gt, edge_gt):
         self.train(True)
         self.optimizer.zero_grad()
-        total_loss, _ = self.loss(input, init_pc, view_az, view_el, proj_gt)
-        # loss = loss_dict['total']
+        total_loss, _ = self.loss(input, init_pc, view_az, view_el, proj_gt, edge_gt)
         total_loss.backward()
         self.optimizer.step()
         total_loss_np = total_loss.detach().item()

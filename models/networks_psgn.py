@@ -122,7 +122,6 @@ class Pixel2Pointcloud_PSGN_FC(nn.Module):
         self.psgn_conv.zero_grad()
         self.psgn_fc.zero_grad()
         total_loss,  _ = self.loss(input, init_pc, view_az, view_el, proj_gt, edge_gt)
-        # loss = loss_dict['total']
         total_loss.backward()
         self.optimizer_conv.step()
         self.optimizer_fc.step()
