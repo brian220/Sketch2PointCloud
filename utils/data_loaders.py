@@ -44,15 +44,16 @@ def init_pointcloud_loader(num_points):
 
 class ShapeNetDataset(torch.utils.data.dataset.Dataset):
     """ShapeNetDataset class used for PyTorch DataLoader"""
-    def __init__(self, dataset_type, file_list, init_num_points, proj_num_views, grid_h, grid_w, transforms=None):
+    def __init__(self, dataset_type, file_list, init_num_points, proj_num_views, grid_h, grid_w, rec_model, transforms=None):
         self.dataset_type = dataset_type
         self.file_list = file_list
         self.init_num_points = init_num_points
         self.proj_num_views = proj_num_views
-        self.transforms = transforms
+        self.rec_model = rec_model
         self.grid_h = grid_h
         self.grid_w = grid_w
-        
+        self.transforms = transforms
+
     def __len__(self):
         return len(self.file_list)
 
@@ -86,13 +87,17 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
             selected_rendering_image_path = rendering_image_paths[1]
         
         # read the test, train image
-        # print(selected_rendering_image_path)
         rendering_images = []
         rendering_image = cv2.imread(selected_rendering_image_path).astype(np.float32) / 255.
-        if cfg.NETWORK.REC_MODEL == 'PSGN_FC':
+
+        if self.rec_model == 'PSGN_FC':
             rendering_image = cv2.resize(rendering_image, (self.grid_h, self.grid_w))
-        elif cfg.NETWORK.REC_MODEL == 'GRAPHX':
+        elif self.rec_model == 'GRAPHX':
             rendering_image = cv2.resize(rendering_image, (224, 224))
+        else:
+            print('Invalid model name, please check the config.py (NET_WORK.REC_MODEL)')
+            sys.exit(2)
+
         rendering_image = cv2.cvtColor(rendering_image, cv2.COLOR_BGR2RGB)
 
         if len(rendering_image.shape) < 3:
@@ -164,6 +169,7 @@ class ShapeNetDataLoader:
         self.proj_num_views = cfg.PROJECTION.NUM_VIEWS
         self.grid_h = cfg.PROJECTION.GRID_H 
         self.grid_w = cfg.PROJECTION.GRID_W
+        self.rec_model = cfg.NETWORK.REC_MODEL
         
         # Load all taxonomies of the dataset
         with open(cfg.DATASETS.SHAPENET.TAXONOMY_FILE_PATH, encoding='utf-8') as file:
@@ -188,7 +194,7 @@ class ShapeNetDataLoader:
         files = self.get_files_of_taxonomy(taxonomy_folder_name, samples)
 
         print('[INFO] %s Complete collecting files of the dataset. Total files: %d.' % (dt.now(), len(files)))
-        return ShapeNetDataset(dataset_type, files, self.init_num_points, self.proj_num_views, self.grid_h, self.grid_w, transforms)
+        return ShapeNetDataset(dataset_type, files, self.init_num_points, self.proj_num_views, self.grid_h, self.grid_w, self.rec_model, transforms)
         
     def get_files_of_taxonomy(self, taxonomy_folder_name, samples):
         files_of_taxonomy = []
