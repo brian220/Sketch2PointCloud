@@ -14,21 +14,9 @@ import torch.nn as nn
 
 from layers.graphx import GraphXConv
 
-from models.projection import Projector
-
-# from losses.chamfer_loss import chamfer
-# from losses.earth_mover_distance import EMD
-from losses.proj_losses import *
-
 import utils.network_utils
 
 Conv = nn.Conv2d
-
-'''
-def normalized_chamfer_loss(pred, gt, reduce='sum'):
-    loss = chamfer(pred, gt, reduce=reduce)
-    return loss if reduce == 'sum' else loss * 3000.
-'''
 
 def wrapper(func, *args, **kwargs):
     class Wrapper(nn.Module):
@@ -237,86 +225,3 @@ class PointCloudGraphXDecoder(nn.Sequential):
         self.conv3 = GraphXConv(512, 256, in_instances=in_instances, activation=activation)
         self.conv4 = GraphXConv(256, 128, in_instances=in_instances, activation=activation)
         self.conv6 = nn.Linear(128, 3)
-
-
-class Pixel2Pointcloud(nn.Module):
-    def __init__(self, cfg, in_channels, in_instances, activation=nn.ReLU(), optimizer=None, scheduler=None, use_graphx=True, **kwargs):
-        super().__init__()
-        self.cfg = cfg
-        
-        # Graphx
-        self.img_enc = CNN18Encoder(in_channels, activation)
-
-        out_features = [block[-2].out_channels for block in self.img_enc.children()]
-        self.pc_enc = PointCloudEncoder(3, out_features, cat_pc=True, use_adain=True, use_proj=True, 
-                                        activation=activation)
-        
-        deform_net = PointCloudGraphXDecoder if use_graphx else PointCloudDecoder
-        self.pc = deform_net(2 * sum(out_features) + 3, in_instances=in_instances, activation=activation)
-        
-        self.optimizer = None if optimizer is None else optimizer(self.parameters())
-        self.scheduler = None if scheduler or optimizer is None else scheduler(self.optimizer)
-        self.kwargs = kwargs
-        
-        # self.emd = EMD().cuda()
-
-        # 2D supervision part
-        self.projector = Projector(self.cfg)
-        self.grid_dist_np = grid_dist(grid_h=self.cfg.PROJECTION.GRID_H, grid_w=self.cfg.PROJECTION.GRID_W)
-        self.grid_dist_tensor = utils.network_utils.var_or_cuda(torch.from_numpy(self.grid_dist_np))
-
-        # proj loss
-        self.proj_loss = ProjectLoss(self.cfg).cuda()
-
-        if torch.cuda.is_available():
-            self.cuda()
-
-    def forward(self, input, init_pc):
-        img_feats = self.img_enc(input)
-        pc_feats = self.pc_enc(img_feats, init_pc)
-        return self.pc(pc_feats)
-
-    def loss(self, input, init_pc, view_az, view_el, proj_gt):
-        pred_pc = self(input, init_pc)
-
-        # Use 2D projection loss to train
-        proj_pred = {}
-        loss_bce = {}
-        fwd = {}
-        bwd = {}
-        loss_fwd = {}
-        loss_bwd = {}
-        loss = 0.
-        for idx in range(0, self.cfg.PROJECTION.NUM_VIEWS):
-            # Projection
-            proj_pred[idx] = self.projector(pred_pc, view_az[:,idx], view_el[:,idx])
-            
-            # Loss
-            loss_bce[idx], fwd[idx], bwd[idx] = self.proj_loss(preds=proj_pred[idx], 
-                                                               gts=proj_gt[:,idx], 
-                                                               grid_dist_tensor=self.grid_dist_tensor)
-
-            loss += torch.mean(loss_bce[idx])
-
-            # loss_fwd[idx] = 1e-4 * torch.mean(fwd[idx])
-            # loss_bwd[idx] = 1e-4 * torch.mean(bwd[idx])
-            """
-            loss += self.cfg.PROJECTION.LAMDA_BCE * torch.mean(loss_bce[idx]) +\
-                        self.cfg.PROJECTION.LAMDA_AFF_FWD * loss_fwd[idx] +\
-                        self.cfg.PROJECTION.LAMDA_AFF_BWD * loss_bwd[idx]"""
-        
-        loss = (loss / self.cfg.PROJECTION.NUM_VIEWS)
-        print("Loss", loss)
-
-        return loss, pred_pc
-
-    def learn(self, input, init_pc, view_az, view_el, proj_gt):
-        self.train(True)
-        self.optimizer.zero_grad()
-        loss, _ = self.loss(input, init_pc, view_az, view_el, proj_gt)
-        # loss = loss_dict['total']
-        loss.backward()
-        self.optimizer.step()
-        loss_np = loss.detach().item()
-        del loss
-        return loss_np

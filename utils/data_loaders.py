@@ -88,9 +88,11 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         # read the test, train image
         # print(selected_rendering_image_path)
         rendering_images = []
-        # rendering_image =  cv2.imread(selected_rendering_image_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.
         rendering_image = cv2.imread(selected_rendering_image_path).astype(np.float32) / 255.
-        rendering_image = cv2.resize(rendering_image, (self.grid_h, self.grid_w))
+        if cfg.NETWORK.REC_MODEL == 'PSGN_FC':
+            rendering_image = cv2.resize(rendering_image, (self.grid_h, self.grid_w))
+        elif cfg.NETWORK.REC_MODEL == 'GRAPHX':
+            rendering_image = cv2.resize(rendering_image, (224, 224))
         rendering_image = cv2.cvtColor(rendering_image, cv2.COLOR_BGR2RGB)
 
         if len(rendering_image.shape) < 3:

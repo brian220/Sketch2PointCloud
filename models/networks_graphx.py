@@ -12,6 +12,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from models.graphx import CNN18Encoder, PointCloudEncoder, PointCloudGraphXDecoder, PointCloudDecoder
 from models.projection import Projector
 from models.edge_detection import EdgeDetector 
 
@@ -19,18 +20,24 @@ from losses.proj_losses import *
 
 import utils.network_utils
 
-class Pixel2Pointcloud_PSGN_FC(nn.Module):
-    def __init__(self, cfg, optimizer_conv=None, optimizer_fc=None, scheduler=None):
+class Pixel2Pointcloud_GRAPHX(nn.Module):
+    def __init__(self, cfg, in_channels, in_instances, activation=nn.ReLU(), optimizer=None, scheduler=None, use_graphx=True, **kwargs):
         super().__init__()
         self.cfg = cfg
         
-        # PSGN FC
-        self.psgn_conv = PSGN_CONV(self.cfg)
-        self.psgn_fc = PSGN_FC(self.cfg)
+        # Graphx
+        self.img_enc = CNN18Encoder(in_channels, activation)
+
+        out_features = [block[-2].out_channels for block in self.img_enc.children()]
+        self.pc_enc = PointCloudEncoder(3, out_features, cat_pc=True, use_adain=True, use_proj=True, 
+                                        activation=activation)
         
-        self.optimizer_conv = None if optimizer_conv is None else optimizer_conv(self.psgn_conv.parameters())
-        self.optimizer_fc = None if optimizer_fc is None else optimizer_fc(self.psgn_fc.parameters())
+        deform_net = PointCloudGraphXDecoder if use_graphx else PointCloudDecoder
+        self.pc = deform_net(2 * sum(out_features) + 3, in_instances=in_instances, activation=activation)
+        
+        self.optimizer = None if optimizer is None else optimizer(self.parameters())
         self.scheduler = None if scheduler or optimizer is None else scheduler(self.optimizer)
+        self.kwargs = kwargs
 
         # 2D supervision part
         self.projector = Projector(self.cfg)
@@ -44,22 +51,22 @@ class Pixel2Pointcloud_PSGN_FC(nn.Module):
         self.edge_proj_loss = ProjectLoss(self.cfg)
 
         if torch.cuda.is_available():
-            self.psgn_conv = torch.nn.DataParallel(self.psgn_conv, device_ids=cfg.CONST.DEVICE).cuda()
-            self.psgn_fc = torch.nn.DataParallel(self.psgn_fc, device_ids=cfg.CONST.DEVICE).cuda()
+            self.img_enc = torch.nn.DataParallel(self.img_enc, device_ids=cfg.CONST.DEVICE).cuda()
+            self.pc_enc = torch.nn.DataParallel(self.pc_enc, device_ids=cfg.CONST.DEVICE).cuda()
+            self.pc = torch.nn.DataParallel(self.pc, device_ids=cfg.CONST.DEVICE).cuda()
             self.projector = torch.nn.DataParallel(self.projector, device_ids=cfg.CONST.DEVICE).cuda()
             self.edge_detector = torch.nn.DataParallel(self.edge_detector, device_ids=cfg.CONST.DEVICE).cuda()
             self.proj_loss = torch.nn.DataParallel(self.proj_loss, device_ids=cfg.CONST.DEVICE).cuda()
             self.cuda()
 
-    def forward(self, input):
-        conv_features = self.psgn_conv(input)
-        points = self.psgn_fc(conv_features)
+    def forward(self, input, init_pc):
+        img_feats = self.img_enc(input)
+        pc_feats = self.pc_enc(img_feats, init_pc)
+        return self.pc(pc_feats)
 
-        return points
+    def loss(self, input, init_pc, view_az, view_el, proj_gt):
+        pred_pc = self(input, init_pc)
 
-    def loss(self, input, init_pc, view_az, view_el, proj_gt, edge_gt):
-        pred_pc = self(input)
-        
         grid_dist_np = grid_dist(grid_h=self.cfg.PROJECTION.GRID_H, grid_w=self.cfg.PROJECTION.GRID_W).astype(np.float32)
         grid_dist_tensor = utils.network_utils.var_or_cuda(torch.from_numpy(grid_dist_np))
 
@@ -117,16 +124,13 @@ class Pixel2Pointcloud_PSGN_FC(nn.Module):
         
         return total_loss, pred_pc
 
-    def learn(self, input, init_pc, view_az, view_el, proj_gt, edge_gt):
+    def learn(self, input, init_pc, view_az, view_el, proj_gt):
         self.train(True)
-        self.psgn_conv.zero_grad()
-        self.psgn_fc.zero_grad()
-        total_loss,  _ = self.loss(input, init_pc, view_az, view_el, proj_gt, edge_gt)
+        self.optimizer.zero_grad()
+        total_loss, _ = self.loss(input, init_pc, view_az, view_el, proj_gt)
         # loss = loss_dict['total']
         total_loss.backward()
-        self.optimizer_conv.step()
-        self.optimizer_fc.step()
+        self.optimizer.step()
         total_loss_np = total_loss.detach().item()
-        del loss
+        del total_loss
         return total_loss_np
-

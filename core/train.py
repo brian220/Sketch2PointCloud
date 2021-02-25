@@ -22,7 +22,8 @@ from tensorboardX import SummaryWriter
 from time import time
 
 from core.valid import valid_net
-from models.networks_psgn import Pixel2Pointcloud
+from models.networks_psgn import Pixel2Pointcloud_PSGN_FC
+from models.networks_graphx import Pixel2Pointcloud_GRAPHX
 
 def train_net(cfg):
     print("cuda is available?", torch.cuda.is_available())
@@ -31,24 +32,10 @@ def train_net(cfg):
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
     torch.backends.cudnn.benchmark = True
 
-    # Set up data augmentation
-    IMG_SIZE = cfg.CONST.IMG_H, cfg.CONST.IMG_W
-    CROP_SIZE = cfg.CONST.CROP_IMG_H, cfg.CONST.CROP_IMG_W
-
     train_transforms = utils.data_transforms.Compose([
-        # utils.data_transforms.RandomCrop(IMG_SIZE, CROP_SIZE),
-        # utils.data_transforms.RandomBackground(cfg.TRAIN.RANDOM_BG_COLOR_RANGE),
-        # utils.data_transforms.ColorJitter(cfg.TRAIN.BRIGHTNESS, cfg.TRAIN.CONTRAST, cfg.TRAIN.SATURATION),
-        # utils.data_transforms.RandomNoise(cfg.TRAIN.NOISE_STD),
-        # utils.data_transforms.Normalize(mean=cfg.DATASET.MEAN, std=cfg.DATASET.STD),
-        # utils.data_transforms.RandomFlip(), # Disable the random flip to avoid problem in view estimation
-        # utils.data_transforms.RandomPermuteRGB(), # Sketch data is gray scale image, no need to permute RGB
         utils.data_transforms.ToTensor(),
     ])
     val_transforms = utils.data_transforms.Compose([
-        # utils.data_transforms.CenterCrop(IMG_SIZE, CROP_SIZE),
-        # utils.data_transforms.RandomBackground(cfg.TEST.RANDOM_BG_COLOR_RANGE),
-        # utils.data_transforms.Normalize(mean=cfg.DATASET.MEAN, std=cfg.DATASET.STD),
         utils.data_transforms.ToTensor(),
     ])
 
@@ -72,11 +59,18 @@ def train_net(cfg):
 
     # Set up networks
     # The parameters here need to be set in cfg
-    net = Pixel2Pointcloud(cfg, 3, cfg.GRAPHX.NUM_INIT_POINTS,
-                        optimizer_encode=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.LEARNING_RATE, weight_decay=cfg.TRAIN.ENCODE_WEIGHT_DECAY),
-                        optimizer_decode=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.LEARNING_RATE, weight_decay=cfg.TRAIN.DECODE_WEIGHT_DECAY),
-                        scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
-                        use_graphx=cfg.GRAPHX.USE_GRAPHX)
+    if cfg.NETWORK.REC_MODEL == 'GRAPHX':
+        net = Pixel2Pointcloud_GRAPHX(cfg=cfg,
+                                      in_channels=3, 
+                                      in_instances=cfg.GRAPHX.NUM_INIT_POINTS,
+                                      optimizer=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.GRAPHX_LEARNING_RATE, weight_decay=cfg.TRAIN.GRAPHX_WEIGHT_DECAY),
+                                      scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
+                                      use_graphx=cfg.GRAPHX.USE_GRAPHX)
+    elif cfg.NETWORK.REC_MODEL == 'PSGN_FC':
+        net = Pixel2Pointcloud_PSGN_FC(cfg=cfg,
+                                      optimizer_conv=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.PSGN_FC_LEARNING_RATE, weight_decay=cfg.TRAIN.PSGN_FC_CONV_WEIGHT_DECAY),
+                                      optimizer_fc=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.PSGN_FC_LEARNING_RATE, weight_decay=cfg.TRAIN.PSGN_FC_FC_WEIGHT_DECAY),
+                                      scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA))
 
     if torch.cuda.is_available():
        net = torch.nn.DataParallel(net, device_ids=cfg.CONST.DEVICE).cuda() 
@@ -138,7 +132,7 @@ def train_net(cfg):
             model_y = utils.network_utils.var_or_cuda(model_y)
             init_point_clouds = utils.network_utils.var_or_cuda(init_point_clouds)
 
-            loss = net.module.learn(rendering_images, init_point_clouds, model_x, model_y, model_gt, edge_gt)
+            total_loss = net.module.learn(rendering_images, init_point_clouds, model_x, model_y, model_gt, edge_gt)
             
             reconstruction_losses.update(loss)
 
@@ -147,9 +141,9 @@ def train_net(cfg):
             batch_end_time = time()
             print(
                 '[INFO] %s [Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) \
-                 REC_Loss = %.4f'
+                 Total_loss = %.4f, Loss = %.4f, edge_loss = %.4f'
                 % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val,
-                   data_time.val, loss))
+                   data_time.val, total_loss, loss, edge_loss))
             
         # Append epoch loss to TensorBoard
         train_writer.add_scalar('EncoderDecoder/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)
