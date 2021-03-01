@@ -122,7 +122,7 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
         if self.cfg.EDGE_LOSS.USE_EDGE_LOSS:
             total_loss = ((loss + edge_loss*cfg.EDGE_LOSS.LAMDA_EDGE_LOSS) / self.cfg.PROJECTION.NUM_VIEWS)
         else:
-            total_loss = loss
+            total_loss = loss / self.cfg.PROJECTION.NUM_VIEWS
         
         return total_loss, pred_pc
 

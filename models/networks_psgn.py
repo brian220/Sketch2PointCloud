@@ -12,6 +12,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from models.psgn_fc import PSGN_CONV, PSGN_FC
 from models.projection import Projector
 from models.edge_detection import EdgeDetector 
 
@@ -35,21 +36,23 @@ class Pixel2Pointcloud_PSGN_FC(nn.Module):
         # 2D supervision part
         self.projector = Projector(self.cfg)
 
-        # edge detector
-        if self.cfg.EDGE_LOSS.USE_EDGE_LOSS:
-            self.edge_detector = EdgeDetector(self.cfg)
-
         # proj loss
         self.proj_loss = ProjectLoss(self.cfg)
-        self.edge_proj_loss = ProjectLoss(self.cfg)
-
+        
         if torch.cuda.is_available():
             self.psgn_conv = torch.nn.DataParallel(self.psgn_conv, device_ids=cfg.CONST.DEVICE).cuda()
             self.psgn_fc = torch.nn.DataParallel(self.psgn_fc, device_ids=cfg.CONST.DEVICE).cuda()
             self.projector = torch.nn.DataParallel(self.projector, device_ids=cfg.CONST.DEVICE).cuda()
-            self.edge_detector = torch.nn.DataParallel(self.edge_detector, device_ids=cfg.CONST.DEVICE).cuda()
             self.proj_loss = torch.nn.DataParallel(self.proj_loss, device_ids=cfg.CONST.DEVICE).cuda()
             self.cuda()
+
+        # edge detector
+        if self.cfg.EDGE_LOSS.USE_EDGE_LOSS:
+            self.edge_detector = EdgeDetector(self.cfg)
+            self.edge_proj_loss = ProjectLoss(self.cfg)
+            if torch.cuda.is_available():
+                self.edge_detector = torch.nn.DataParallel(self.edge_detector, device_ids=cfg.CONST.DEVICE).cuda()
+                self.edge_proj_loss = torch.nn.DataParallel(self.edge_proj_loss, device_ids=cfg.CONST.DEVICE).cuda()
 
     def forward(self, input):
         conv_features = self.psgn_conv(input)
@@ -113,7 +116,7 @@ class Pixel2Pointcloud_PSGN_FC(nn.Module):
         if self.cfg.EDGE_LOSS.USE_EDGE_LOSS:
             total_loss = ((loss + edge_loss*cfg.EDGE_LOSS.LAMDA_EDGE_LOSS) / self.cfg.PROJECTION.NUM_VIEWS)
         else:
-            total_loss = loss
+            total_loss = loss / self.cfg.PROJECTION.NUM_VIEWS
         
         return total_loss, pred_pc
 
@@ -126,6 +129,6 @@ class Pixel2Pointcloud_PSGN_FC(nn.Module):
         self.optimizer_conv.step()
         self.optimizer_fc.step()
         total_loss_np = total_loss.detach().item()
-        del loss
+        del total_loss
         return total_loss_np
 
