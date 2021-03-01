@@ -42,22 +42,24 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
         # 2D supervision part
         self.projector = Projector(self.cfg)
 
-        # edge detector
-        if self.cfg.EDGE_LOSS.USE_EDGE_LOSS:
-            self.edge_detector = EdgeDetector(self.cfg)
-
         # proj loss
         self.proj_loss = ProjectLoss(self.cfg)
-        self.edge_proj_loss = ProjectLoss(self.cfg)
-
+        
         if torch.cuda.is_available():
             self.img_enc = torch.nn.DataParallel(self.img_enc, device_ids=cfg.CONST.DEVICE).cuda()
             self.pc_enc = torch.nn.DataParallel(self.pc_enc, device_ids=cfg.CONST.DEVICE).cuda()
             self.pc = torch.nn.DataParallel(self.pc, device_ids=cfg.CONST.DEVICE).cuda()
             self.projector = torch.nn.DataParallel(self.projector, device_ids=cfg.CONST.DEVICE).cuda()
-            self.edge_detector = torch.nn.DataParallel(self.edge_detector, device_ids=cfg.CONST.DEVICE).cuda()
             self.proj_loss = torch.nn.DataParallel(self.proj_loss, device_ids=cfg.CONST.DEVICE).cuda()
             self.cuda()
+
+        # edge detector
+        if self.cfg.EDGE_LOSS.USE_EDGE_LOSS:
+            self.edge_detector = EdgeDetector(self.cfg)
+            self.edge_proj_loss = ProjectLoss(self.cfg)
+            if torch.cuda.is_available():
+                self.edge_detector = torch.nn.DataParallel(self.edge_detector, device_ids=cfg.CONST.DEVICE).cuda()
+                self.edge_proj_loss = torch.nn.DataParallel(self.edge_proj_loss, device_ids=cfg.CONST.DEVICE).cuda()
 
     def forward(self, input, init_pc):
         img_feats = self.img_enc(input)

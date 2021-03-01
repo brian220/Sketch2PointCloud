@@ -134,16 +134,16 @@ def train_net(cfg):
 
             total_loss = net.module.learn(rendering_images, init_point_clouds, model_x, model_y, model_gt, edge_gt)
             
-            reconstruction_losses.update(loss)
+            reconstruction_losses.update(total_loss)
 
             # Tick / tock
             batch_time.update(time() - batch_end_time)
             batch_end_time = time()
             print(
                 '[INFO] %s [Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) \
-                 Total_loss = %.4f, Loss = %.4f, edge_loss = %.4f'
+                 Total_loss = %.4f'
                 % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val,
-                   data_time.val, total_loss, loss, edge_loss))
+                   data_time.val, total_loss))
             
         # Append epoch loss to TensorBoard
         train_writer.add_scalar('EncoderDecoder/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)

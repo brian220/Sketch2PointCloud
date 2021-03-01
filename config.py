@@ -71,7 +71,7 @@ __C.GRAPHX.NUM_INIT_POINTS                 = 1024
 # Edge loss
 # 
 __C.EDGE_LOSS                              = edict()
-__C.EDGE_LOSS.USE_EDGE_LOSS                = True
+__C.EDGE_LOSS.USE_EDGE_LOSS                = False
 __C.EDGE_LOSS.LAMDA_EDGE_LOSS              = 5e-1
 
 #
