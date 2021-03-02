@@ -17,8 +17,10 @@ from models.projection import Projector
 from models.edge_detection import EdgeDetector 
 
 from losses.proj_losses import *
+from losses.earth_mover_distance import EMD
 
 import utils.network_utils
+import utils.point_cloud_utils
 
 class Pixel2Pointcloud_GRAPHX(nn.Module):
     def __init__(self, cfg, in_channels, in_instances, activation=nn.ReLU(), optimizer=None, scheduler=None, use_graphx=True, **kwargs):
@@ -44,6 +46,9 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
 
         # proj loss
         self.proj_loss = ProjectLoss(self.cfg)
+
+        # emd loss
+        self.emd = EMD()
         
         if torch.cuda.is_available():
             self.img_enc = torch.nn.DataParallel(self.img_enc, device_ids=cfg.CONST.DEVICE).cuda()
@@ -51,6 +56,7 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
             self.pc = torch.nn.DataParallel(self.pc, device_ids=cfg.CONST.DEVICE).cuda()
             self.projector = torch.nn.DataParallel(self.projector, device_ids=cfg.CONST.DEVICE).cuda()
             self.proj_loss = torch.nn.DataParallel(self.proj_loss, device_ids=cfg.CONST.DEVICE).cuda()
+            self.emd = torch.nn.DataParallel(self.emd, device_ids=cfg.CONST.DEVICE).cuda()
             self.cuda()
 
         # edge detector
@@ -66,7 +72,7 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
         pc_feats = self.pc_enc(img_feats, init_pc)
         return self.pc(pc_feats)
 
-    def loss(self, input, init_pc, view_az, view_el, proj_gt, edge_gt):
+    def loss(self, input, init_pc, gt_pc, view_az, view_el, proj_gt, edge_gt):
         pred_pc = self(input, init_pc)
 
         grid_dist_np = grid_dist(grid_h=self.cfg.PROJECTION.GRID_H, grid_w=self.cfg.PROJECTION.GRID_W).astype(np.float32)
@@ -79,8 +85,11 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
         bwd = {}
         loss_fwd = {}
         loss_bwd = {}
-        loss = 0.
+        loss_2d = 0.
         
+        # For edge 3d
+        loss_3d = 0.
+
         # For edge loss
         edge_proj_pred = {}
         edge_loss_bce = {}
@@ -89,49 +98,66 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
         edge_loss_fwd = {}
         edge_loss_bwd = {}
         edge_loss = 0.
-
-        for idx in range(0, self.cfg.PROJECTION.NUM_VIEWS):
-            # Projection
-            proj_pred[idx] = self.projector(pred_pc, view_az[:,idx], view_el[:,idx])
-
-            # Projection loss
-            loss_bce[idx], fwd[idx], bwd[idx] = self.proj_loss(preds=proj_pred[idx], gts=proj_gt[:,idx], grid_dist_tensor=grid_dist_tensor)
-            loss_fwd[idx] = 1e-4 * torch.mean(fwd[idx])
-            loss_bwd[idx] = 1e-4 * torch.mean(bwd[idx])
-
-             # Loss = projection loss + edge projection loss
-            loss += self.cfg.PROJECTION.LAMDA_BCE * torch.mean(loss_bce[idx]) +\
-                    self.cfg.PROJECTION.LAMDA_AFF_FWD * loss_fwd[idx] +\
-                    self.cfg.PROJECTION.LAMDA_AFF_BWD * loss_bwd[idx]
-
-            if self.cfg.EDGE_LOSS.USE_EDGE_LOSS:
-                # Edge prediction of projection
-                proj_pred[idx] = proj_pred[idx].unsqueeze(1) # (BS, 1, H, W)
-                edge_proj_pred[idx] = self.edge_detector(img=proj_pred[idx])
-                edge_proj_pred[idx] = edge_proj_pred[idx].squeeze(1) # (BS, H, W)
+        
+        # for 3d supervision (EMD)
+        if self.cfg.2D_SUPERVISION.USE_2D_LOSS:
+            for idx in range(0, self.cfg.PROJECTION.NUM_VIEWS):
+                # Projection
+                proj_pred[idx] = self.projector(pred_pc, view_az[:,idx], view_el[:,idx])
     
-                # Edge projection loss
-                edge_loss_bce[idx], edge_fwd[idx], edge_bwd[idx] = self.proj_loss(preds=edge_proj_pred[idx], gts=edge_gt[:,idx], grid_dist_tensor=grid_dist_tensor)
-                edge_loss_fwd[idx] = 1e-4 * torch.mean(edge_fwd[idx])
-                edge_loss_bwd[idx] = 1e-4 * torch.mean(edge_bwd[idx])
-
-                edge_loss += self.cfg.PROJECTION.LAMDA_BCE * torch.mean(edge_loss_bce[idx]) +\
-                             self.cfg.PROJECTION.LAMDA_AFF_FWD * edge_loss_fwd[idx] +\
-                             self.cfg.PROJECTION.LAMDA_AFF_BWD * edge_loss_bwd[idx]
+                # Projection loss
+                loss_bce[idx], fwd[idx], bwd[idx] = self.proj_loss(preds=proj_pred[idx], gts=proj_gt[:,idx], grid_dist_tensor=grid_dist_tensor)
+                loss_fwd[idx] = 1e-4 * torch.mean(fwd[idx])
+                loss_bwd[idx] = 1e-4 * torch.mean(bwd[idx])
+    
+                 # Loss = projection loss + edge projection loss
+                loss_2d += self.cfg.PROJECTION.LAMDA_BCE * torch.mean(loss_bce[idx]) +\
+                           self.cfg.PROJECTION.LAMDA_AFF_FWD * loss_fwd[idx] +\
+                           self.cfg.PROJECTION.LAMDA_AFF_BWD * loss_bwd[idx]
+    
+                if self.cfg.EDGE_LOSS.USE_EDGE_LOSS:
+                    # Edge prediction of projection
+                    proj_pred[idx] = proj_pred[idx].unsqueeze(1) # (BS, 1, H, W)
+                    edge_proj_pred[idx] = self.edge_detector(img=proj_pred[idx])
+                    edge_proj_pred[idx] = edge_proj_pred[idx].squeeze(1) # (BS, H, W)
         
-        if self.cfg.EDGE_LOSS.USE_EDGE_LOSS:
-            total_loss = ((loss + edge_loss*cfg.EDGE_LOSS.LAMDA_EDGE_LOSS) / self.cfg.PROJECTION.NUM_VIEWS)
-        else:
-            total_loss = loss / self.cfg.PROJECTION.NUM_VIEWS
+                    # Edge projection loss
+                    edge_loss_bce[idx], edge_fwd[idx], edge_bwd[idx] = self.proj_loss(preds=edge_proj_pred[idx], gts=edge_gt[:,idx], grid_dist_tensor=grid_dist_tensor)
+                    edge_loss_fwd[idx] = 1e-4 * torch.mean(edge_fwd[idx])
+                    edge_loss_bwd[idx] = 1e-4 * torch.mean(edge_bwd[idx])
+    
+                    edge_loss += self.cfg.PROJECTION.LAMDA_BCE * torch.mean(edge_loss_bce[idx]) +\
+                                 self.cfg.PROJECTION.LAMDA_AFF_FWD * edge_loss_fwd[idx] +\
+                                 self.cfg.PROJECTION.LAMDA_AFF_BWD * edge_loss_bwd[idx]
         
-        return total_loss, pred_pc
+        # for 3d supervision (EMD)
+        if self.cfg.3D_SUPERVISION.USE_3D_LOSS:
+            # scale the pred and gt to same size xyz between [-0.5, 0.5]
+            scaled_pred_pc, scaled_gt_pc = utils.point_cloud_utils.scale(pred_pc, gt_pc)
+            loss_3d = torch.mean(self.emd(scaled_pred_pc, scaled_gt_pc))
 
-    def learn(self, input, init_pc, view_az, view_el, proj_gt, edge_gt):
+        # if self.cfg.EDGE_LOSS.USE_EDGE_LOSS:
+        #    total_loss = ((loss_2d + edge_loss*cfg.EDGE_LOSS.LAMDA_EDGE_LOSS) / self.cfg.PROJECTION.NUM_VIEWS)
+        
+        # Total loss
+        if cfg.2D_SUPERVISION.USE_2D_LOSS and cfg.3D_SUPERVISION.USE_3D_LOSS:
+            total_loss = cfg.2D_SUPERVISION.LAMDA_2D_LOSS * (loss_2d/self.cfg.PROJECTION.NUM_VIEWS) +\
+                         cfg.3D_SUPERVISION.LAMDA_3D_LOSS * loss_3d
+        elif cfg.2D_SUPERVISION.USE_2D_LOSS:
+            total_loss = loss_2d / self.cfg.PROJECTION.NUM_VIEWS
+        elif cfg.3D_SUPERVISION.USE_3D_LOSS:
+            total_loss = loss_3d
+            
+        return total_loss, (loss_2d/self.cfg.PROJECTION.NUM_VIEWS), loss_3d, pred_pc
+
+    def learn(self, input, init_pc, gt_pc, view_az, view_el, proj_gt, edge_gt):
         self.train(True)
         self.optimizer.zero_grad()
-        total_loss, _ = self.loss(input, init_pc, view_az, view_el, proj_gt, edge_gt)
+        total_loss, loss_2d, loss_3d, _ = self.loss(input, init_pc, gt_pc, view_az, view_el, proj_gt, edge_gt)
         total_loss.backward()
         self.optimizer.step()
         total_loss_np = total_loss.detach().item()
-        del total_loss
-        return total_loss_np
+        loss_2d_np = loss_2d.detach().item()
+        loss_3d_np = loss_3d.detach().item()
+        del total_loss, loss_2d, loss_3d
+        return total_loss_np, loss_2d_np, loss_3d_np

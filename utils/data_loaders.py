@@ -33,8 +33,8 @@ def init_pointcloud_loader(num_points):
     Z = np.random.rand(num_points) + 1.
     h = np.random.uniform(10., 214., size=(num_points,))
     w = np.random.uniform(10., 214., size=(num_points,))
-    X = (w - 111.5) / 248. * -Z
-    Y = (h - 111.5) / 248. * Z
+    X = (w - 111.5) / 60. * -Z # focal length: 60
+    Y = (h - 111.5) / 60. * Z
     X = np.reshape(X, (-1, 1))
     Y = np.reshape(Y, (-1, 1))
     Z = np.reshape(Z, (-1, 1))
@@ -137,6 +137,9 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
 
         if suffix == '.ply':
             ground_truth_point_cloud = PyntCloud.from_file(ground_truth_point_cloud_path)
+            ground_truth_point_cloud = np.array(ground_truth_point_cloud.points).astype(np.float32)
+        elif suffix == '.npy':
+            ground_truth_point_cloud = np.load(ground_truth_point_cloud_path).astype(np.float32)
             
         # convert to np array
         rendering_images = np.array(rendering_images).astype(np.float32)
@@ -144,8 +147,7 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         edge_gt = np.array(edge_gt).astype(np.float32)
         model_x = np.array(model_x).astype(np.float32)
         model_y = np.array(model_y).astype(np.float32)
-        ground_truth_point_cloud = np.array(ground_truth_point_cloud.points).astype(np.float32)
-
+        
         return (taxonomy_name, sample_name, rendering_images,
                 model_gt, edge_gt, model_x, model_y,
                 init_pointcloud_loader(self.init_num_points), ground_truth_point_cloud)

@@ -109,6 +109,8 @@ def train_net(cfg):
         batch_time = utils.network_utils.AverageMeter()
         data_time = utils.network_utils.AverageMeter()
         reconstruction_losses = utils.network_utils.AverageMeter()
+        loss_2ds = utils.network_utils.AverageMeter()
+        loss_3ds = utils.network_utils.AverageMeter()
 
         net.train()
 
@@ -131,22 +133,28 @@ def train_net(cfg):
             model_x = utils.network_utils.var_or_cuda(model_x)
             model_y = utils.network_utils.var_or_cuda(model_y)
             init_point_clouds = utils.network_utils.var_or_cuda(init_point_clouds)
+            ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
 
-            total_loss = net.module.learn(rendering_images, init_point_clouds, model_x, model_y, model_gt, edge_gt)
+            total_loss, loss_2d, loss_3d = net.module.learn(rendering_images, init_point_clouds, ground_truth_point_clouds, model_x, model_y, model_gt, edge_gt)
             
             reconstruction_losses.update(total_loss)
+            loss_2ds.update(loss_2d)
+            loss_3ds.update(loss_3d)
 
             # Tick / tock
             batch_time.update(time() - batch_end_time)
             batch_end_time = time()
             print(
                 '[INFO] %s [Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) \
-                 Total_loss = %.4f'
+                 Total_loss = %.4f loss_2d = %.4f loss_3d = %.4f'
                 % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val,
-                   data_time.val, total_loss))
+                   data_time.val, total_loss, loss_2d, loss_3d))
             
         # Append epoch loss to TensorBoard
         train_writer.add_scalar('EncoderDecoder/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)
+        train_writer.add_scalar('EncoderDecoder/Loss_2d', loss_2ds.avg, epoch_idx + 1)
+        train_writer.add_scalar('EncoderDecoder/Loss_3d', loss_3ds.avg, epoch_idx + 1)
+
 
         # Validate the training models
         current_loss = valid_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, net)

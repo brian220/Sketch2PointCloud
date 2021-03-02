@@ -34,6 +34,8 @@ def valid_net(cfg,
     n_samples = len(test_data_loader)
 
     reconstruction_losses = utils.network_utils.AverageMeter()
+    loss_2ds = utils.network_utils.AverageMeter()
+    loss_3ds = utils.network_utils.AverageMeter()
 
     net.eval()
 
@@ -58,11 +60,15 @@ def valid_net(cfg,
             #=================================================#
             #                Test the network                 #
             #=================================================#
-            loss, generated_point_clouds = net.module.loss(rendering_images, init_point_clouds, model_x, model_y, model_gt, edge_gt)
+            loss, loss_2d, loss_3d, generated_point_clouds = net.module.loss(rendering_images, init_point_clouds, ground_truth_point_clouds, model_x, model_y, model_gt, edge_gt)
             reconstruction_loss = loss.cpu().detach().data.numpy()
+            loss_2d = loss_2d.cpu().detach().data.numpy()
+            loss_3d = loss_3d.cpu().detach().data.numpy()
             
             # Append loss and accuracy to average metrics
             reconstruction_losses.update(reconstruction_loss)
+            loss_2ds.update(loss_2d)
+            loss_3ds.update(loss_3d)
 
             # Append generated point clouds to TensorBoard
             if output_dir and sample_idx < 3:
@@ -87,5 +93,7 @@ def valid_net(cfg,
 
     if test_writer is not None:
         test_writer.add_scalar('EncoderDecoder/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx)
+        test_writer.add_scalar('EncoderDecoder/EpochLoss_Loss_2D', loss_2d.avg, epoch_idx)
+        test_writer.add_scalar('EncoderDecoder/EpochLoss_Loss_3D', loss_3d.avg, epoch_idx)
 
     return reconstruction_losses.avg
