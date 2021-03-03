@@ -16,7 +16,7 @@ __C.DATASETS.SHAPENET.TAXONOMY_FILE_PATH    = './datasets/rec.json'
 
 __C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_rendered/%s/%s/render_%d.png'
 __C.DATASETS.SHAPENET.DEPTH_PATH            = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_rendered/%s/%s/depth_%d.png'
-__C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/shape_net_core_uniform_samples_2048/%s/%s.ply'
+__C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_pointclouds/%s/%s/pointcloud_1024.npy'
 __C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_rendered/%s/%s/view.txt'
 
 #
@@ -68,6 +68,20 @@ __C.GRAPHX.USE_GRAPHX                      = True
 __C.GRAPHX.NUM_INIT_POINTS                 = 1024
 
 #
+# 2d supervision
+#
+__C.SUPERVISION_2D                         = edict()
+__C.SUPERVISION_2D.USE_2D_LOSS             = True
+__C.SUPERVISION_2D.LAMDA_2D_LOSS           = 1.
+
+#
+# 3d supervision
+#
+__C.SUPERVISION_3D                         = edict()
+__C.SUPERVISION_3D.USE_3D_LOSS             = True
+__C.SUPERVISION_3D.LAMDA_3D_LOSS           = 1.
+
+#
 # Edge loss
 # 
 __C.EDGE_LOSS                              = edict()
@@ -95,8 +109,8 @@ __C.TRAIN.NUM_WORKER                        = 4             # number of data wor
 __C.TRAIN.NUM_EPOCHES                       = 1000
 
 # __C.TRAIN.VIEW_ESTIMATOR_LEARNING_RATE      = 5e-4
-__C.TRAIN.MILESTONES                        = [400]
-__C.TRAIN.VIEW_ESTIMATOR_LR_MILESTONES      = [400]
+__C.TRAIN.MILESTONES                        = [40]
+__C.TRAIN.VIEW_ESTIMATOR_LR_MILESTONES      = [40]
 
 # train parameters for graphx
 __C.TRAIN.GRAPHX_LEARNING_RATE              = 5e-5

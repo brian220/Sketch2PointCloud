@@ -100,7 +100,7 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
         edge_loss = 0.
         
         # for 3d supervision (EMD)
-        if self.cfg.2D_SUPERVISION.USE_2D_LOSS:
+        if self.cfg.SUPERVISION_2D.USE_2D_LOSS:
             for idx in range(0, self.cfg.PROJECTION.NUM_VIEWS):
                 # Projection
                 proj_pred[idx] = self.projector(pred_pc, view_az[:,idx], view_el[:,idx])
@@ -131,7 +131,7 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
                                  self.cfg.PROJECTION.LAMDA_AFF_BWD * edge_loss_bwd[idx]
         
         # for 3d supervision (EMD)
-        if self.cfg.3D_SUPERVISION.USE_3D_LOSS:
+        if self.cfg.SUPERVISION_3D.USE_3D_LOSS:
             # scale the pred and gt to same size xyz between [-0.5, 0.5]
             scaled_pred_pc, scaled_gt_pc = utils.point_cloud_utils.scale(pred_pc, gt_pc)
             loss_3d = torch.mean(self.emd(scaled_pred_pc, scaled_gt_pc))
@@ -140,12 +140,12 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
         #    total_loss = ((loss_2d + edge_loss*cfg.EDGE_LOSS.LAMDA_EDGE_LOSS) / self.cfg.PROJECTION.NUM_VIEWS)
         
         # Total loss
-        if cfg.2D_SUPERVISION.USE_2D_LOSS and cfg.3D_SUPERVISION.USE_3D_LOSS:
-            total_loss = cfg.2D_SUPERVISION.LAMDA_2D_LOSS * (loss_2d/self.cfg.PROJECTION.NUM_VIEWS) +\
-                         cfg.3D_SUPERVISION.LAMDA_3D_LOSS * loss_3d
-        elif cfg.2D_SUPERVISION.USE_2D_LOSS:
+        if cfg.SUPERVISION_2D.USE_2D_LOSS and cfg.SUPERVISION_3D.USE_3D_LOSS:
+            total_loss = cfg.SUPERVISION_2D.LAMDA_2D_LOSS * (loss_2d/self.cfg.PROJECTION.NUM_VIEWS) +\
+                         cfg.SUPERVISION_3D.LAMDA_3D_LOSS * loss_3d
+        elif cfg.SUPERVISION_2D.USE_2D_LOSS:
             total_loss = loss_2d / self.cfg.PROJECTION.NUM_VIEWS
-        elif cfg.3D_SUPERVISION.USE_3D_LOSS:
+        elif cfg.SUPERVISION_3D.USE_3D_LOSS:
             total_loss = loss_3d
             
         return total_loss, (loss_2d/self.cfg.PROJECTION.NUM_VIEWS), loss_3d, pred_pc
