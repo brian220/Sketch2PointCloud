@@ -92,8 +92,8 @@ def valid_net(cfg,
             break
 
     if test_writer is not None:
-        test_writer.add_scalar('EncoderDecoder/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx)
-        test_writer.add_scalar('EncoderDecoder/EpochLoss_Loss_2D', loss_2d.avg, epoch_idx)
-        test_writer.add_scalar('EncoderDecoder/EpochLoss_Loss_3D', loss_3d.avg, epoch_idx)
+        test_writer.add_scalar('Total/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx)
+        test_writer.add_scalar('2D/EpochLoss_Loss_2D', loss_2ds.avg, epoch_idx)
+        test_writer.add_scalar('3D/EpochLoss_Loss_3D', loss_3ds.avg, epoch_idx)
 
     return reconstruction_losses.avg

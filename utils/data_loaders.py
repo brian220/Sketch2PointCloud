@@ -88,7 +88,7 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         
         # read the test, train image
         rendering_images = []
-        rendering_image = cv2.imread(selected_rendering_image_path).astype(np.float32) / 255.
+        rendering_image = cv2.imread(selected_rendering_image_path, cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255.
 
         if self.rec_model == 'PSGN_FC':
             rendering_image = cv2.resize(rendering_image, (self.grid_h, self.grid_w))
@@ -97,10 +97,11 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         else:
             print('Invalid model name, please check the config.py (NET_WORK.REC_MODEL)')
             sys.exit(2)
+        
+        # rendering_image = cv2.cvtColor(rendering_image, cv2.COLOR_BGR2RGB)
+        rendering_image = np.expand_dims(rendering_image, -1)
 
-        rendering_image = cv2.cvtColor(rendering_image, cv2.COLOR_BGR2RGB)
-
-        if len(rendering_image.shape) < 3:
+        if len(rendering_image.shape) < 1:
             print('[FATAL] %s It seems that there is something wrong with the image file %s' %
                      (dt.now(), image_path))
             sys.exit(2)

@@ -74,6 +74,8 @@ class Pixel2Pointcloud_PSGN_FC(nn.Module):
         loss_fwd = {}
         loss_bwd = {}
         loss = 0.
+        if not self.cfg.SUPERVISION_2D.USE_2D_LOSS:
+            loss_2d = torch.tensor(loss_2d)
         
         # For edge loss
         edge_proj_pred = {}
@@ -114,7 +116,7 @@ class Pixel2Pointcloud_PSGN_FC(nn.Module):
                              self.cfg.PROJECTION.LAMDA_AFF_BWD * edge_loss_bwd[idx]
         
         if self.cfg.EDGE_LOSS.USE_EDGE_LOSS:
-            total_loss = ((loss + edge_loss*cfg.EDGE_LOSS.LAMDA_EDGE_LOSS) / self.cfg.PROJECTION.NUM_VIEWS)
+            total_loss = ((loss + edge_loss*self.cfg.EDGE_LOSS.LAMDA_EDGE_LOSS) / self.cfg.PROJECTION.NUM_VIEWS)
         else:
             total_loss = loss / self.cfg.PROJECTION.NUM_VIEWS
         

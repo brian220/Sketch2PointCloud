@@ -61,7 +61,7 @@ def train_net(cfg):
     # The parameters here need to be set in cfg
     if cfg.NETWORK.REC_MODEL == 'GRAPHX':
         net = Pixel2Pointcloud_GRAPHX(cfg=cfg,
-                                      in_channels=3, 
+                                      in_channels=1, 
                                       in_instances=cfg.GRAPHX.NUM_INIT_POINTS,
                                       optimizer=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.GRAPHX_LEARNING_RATE, weight_decay=cfg.TRAIN.GRAPHX_WEIGHT_DECAY),
                                       scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
@@ -151,9 +151,9 @@ def train_net(cfg):
                    data_time.val, total_loss, loss_2d, loss_3d))
             
         # Append epoch loss to TensorBoard
-        train_writer.add_scalar('EncoderDecoder/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)
-        train_writer.add_scalar('EncoderDecoder/Loss_2d', loss_2ds.avg, epoch_idx + 1)
-        train_writer.add_scalar('EncoderDecoder/Loss_3d', loss_3ds.avg, epoch_idx + 1)
+        train_writer.add_scalar('Total/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)
+        train_writer.add_scalar('2D/EpochLoss_Loss_2D', loss_2ds.avg, epoch_idx + 1)
+        train_writer.add_scalar('3D/EpochLoss_Loss_3D', loss_3ds.avg, epoch_idx + 1)
 
 
         # Validate the training models
