@@ -29,6 +29,7 @@ class DatasetType(Enum):
 
 
 # //////////////////////////////// = End of DatasetType Class Definition = ///////////////////////////////// #
+
 def init_pointcloud_loader(num_points):
     Z = np.random.rand(num_points) + 1.
     h = np.random.uniform(10., 214., size=(num_points,))
@@ -41,6 +42,37 @@ def init_pointcloud_loader(num_points):
     XYZ = np.concatenate((X, Y, Z), 1)
     return XYZ.astype('float32')
 
+def sample_spherical(n_points):
+    vec = np.random.rand(n_points, 3) * 2. - 1.
+    vec /= np.linalg.norm(vec, axis=1, keepdims=True)
+    pc = vec * .3 + np.array([[6.462339e-04,  9.615256e-04, -7.909229e-01]])
+    return pc.astype('float32')
+
+# xyz is a single pcl
+def np_rotate(xyz, xangle=0, yangle=0, inverse=False):
+    '''
+    Rotate input pcl along x and y axes using numpy
+    args:
+            xyz: float, (N_PTS,3), numpy array; input point cloud
+            xangle, yangle: float, (); angles by which pcl has to be rotated, 
+                                    in radians
+    returns:
+            xyz: float, (N_PTS,3); rotated point clooud
+    '''
+    rotmat = np.eye(3)
+    rotmat=rotmat.dot(np.array([
+	    [1.0,0.0,0.0],
+	    [0.0,np.cos(xangle),-np.sin(xangle)],
+	    [0.0,np.sin(xangle),np.cos(xangle)],
+	    ]))
+    rotmat=rotmat.dot(np.array([
+	    [np.cos(yangle),0.0,-np.sin(yangle)],
+	    [0.0,1.0,0.0],
+	    [np.sin(yangle),0.0,np.cos(yangle)],
+	    ]))
+    if inverse:
+	    rotmat = np.linalg.inv(rotmat)
+    return xyz.dot(rotmat)
 
 class ShapeNetDataset(torch.utils.data.dataset.Dataset):
     """ShapeNetDataset class used for PyTorch DataLoader"""
@@ -139,9 +171,10 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         if suffix == '.ply':
             ground_truth_point_cloud = PyntCloud.from_file(ground_truth_point_cloud_path)
             ground_truth_point_cloud = np.array(ground_truth_point_cloud.points).astype(np.float32)
+            
         elif suffix == '.npy':
             ground_truth_point_cloud = np.load(ground_truth_point_cloud_path).astype(np.float32)
-            
+
         # convert to np array
         rendering_images = np.array(rendering_images).astype(np.float32)
         model_gt = np.array(model_gt).astype(np.float32)
@@ -255,7 +288,7 @@ class ShapeNetDataLoader:
                 angle_y = float(angle.split(' ')[1])
                 # convert angles to radians
                 radian_x.append(angle_x*np.pi/180.)
-                radian_y.append(angle_y*np.pi/180.)
+                radian_y.append((angle_y - 90.)*np.pi/180.) # original model face direction: z, change to x
                 
             # Append to the list of rendering images
             files_of_taxonomy.append({

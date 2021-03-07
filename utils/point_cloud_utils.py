@@ -51,3 +51,43 @@ class Scale(torch.nn.Module):
         gt_scaled = (gt.permute(2, 1, 0) * scaling_factor_gt).permute(2, 1, 0) + torch.reshape(adjustment_factor_gt.permute(1, 0), (-1, 1, 3))
     
         return pr_scaled, gt_scaled
+
+
+class Scale_one(torch.nn.Module):
+    '''
+    Scale GT PCL to a bounding cube with edges from [-0.5,0.5] in
+    each axis. 
+    args:
+            gt_pc: float, (BS,N_PTS,3); GT point cloud
+    returns:
+            gt_scaled: float, (BS,N_PTS,3); scaled GT point cloud
+    '''
+    def __init__(self, cfg):
+        super(Scale_one, self).__init__()
+        self.cfg = cfg
+        
+    def forward(self, gt_pc):
+        
+        gt = gt_pc.type(torch.FloatTensor)
+        
+        min_gt = torch.stack([torch.min(gt[:,:,i], dim=1)[0] for i in range(3)])
+        max_gt = torch.stack([torch.max(gt[:,:,i], dim=1)[0] for i in range(3)])
+        
+        length_gt = torch.abs(max_gt - min_gt)
+        
+        diff_gt = torch.max(length_gt, dim=0, keepdim=True)[0] - length_gt
+        
+        new_min_gt = torch.stack([min_gt[i,:] - diff_gt[i,:]/2. for i in range(3)])
+        new_max_gt = torch.stack([max_gt[i,:] + diff_gt[i,:]/2. for i in range(3)])
+        
+        size_gt = torch.max(length_gt, dim=0)[0]
+        
+        scaling_factor_gt = 1. / size_gt
+    
+        box_min = torch.ones_like(new_min_gt) * -0.5
+        
+        adjustment_factor_gt = box_min - scaling_factor_gt * new_min_gt
+        
+        gt_scaled = (gt.permute(2, 1, 0) * scaling_factor_gt).permute(2, 1, 0) + torch.reshape(adjustment_factor_gt.permute(1, 0), (-1, 1, 3))
+    
+        return gt_scaled
