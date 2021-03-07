@@ -122,7 +122,12 @@ class Projector(torch.nn.Module):
     
     def world2cam(self, xyz, az, el, batch_size, N_PTS=1024):
         '''
-        Convert pcl from world co-ordinates to camera co-ordinates
+        Convert pcl from world co-ordinates to camera co-ordinates,
+        the rotation matrix is different from capnet, inorder to 
+        fit the training data orientation.
+        in capnet: chair face to z axis
+        here: chair face to x axis
+
         args:
                 xyz: float tensor, (BS,N_PTS,3); input point cloud
                          values assumed to be in (-1,1)
@@ -135,15 +140,24 @@ class Projector(torch.nn.Module):
                             co-ordinates
         '''
         # Camera origin calculation - az,el,d to 3D co-ord
-
+ 
         # Rotation
+        """
         rotmat_az=[
                     [torch.ones_like(az),torch.zeros_like(az),torch.zeros_like(az)],
                     [torch.zeros_like(az),torch.cos(az),-torch.sin(az)],
                     [torch.zeros_like(az),torch.sin(az),torch.cos(az)]
                     ]
+        """
+        # y ---> x
+        rotmat_az=[
+                    [torch.cos(az),torch.sin(az),torch.zeros_like(az)],
+                    [-torch.sin(az),torch.cos(az),torch.zeros_like(az)],
+                    [torch.zeros_like(az),torch.zeros_like(az), torch.ones_like(az)]
+                    ]
         rotmat_az = [ torch.stack(x) for x in rotmat_az ]
-    
+        
+        # z ---> x, in dataloader, az = original az - 90 degree, which means here is actually x ----> -z 
         rotmat_el=[
                     [torch.cos(el),torch.zeros_like(az), torch.sin(el)],
                     [torch.zeros_like(az),torch.ones_like(az),torch.zeros_like(az)],

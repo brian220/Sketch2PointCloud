@@ -18,7 +18,7 @@ from models.edge_detection import EdgeDetector
 
 from losses.proj_losses import *
 from losses.earth_mover_distance import EMD
-from utils.point_cloud_utils import Scale
+from utils.point_cloud_utils import Scale, Scale_one
 
 import utils.network_utils
 
@@ -49,6 +49,7 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
 
         # scale
         self.scale = Scale(self.cfg)
+        self.scale_one = Scale_one(self.cfg)
 
         # emd loss
         self.emd = EMD()
@@ -95,6 +96,8 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
 
         # For edge 3d
         loss_3d = 0.
+        if not self.cfg.SUPERVISION_3D.USE_3D_LOSS:
+            loss_3d = torch.tensor(loss_3d)
 
         # For edge loss
         edge_proj_pred = {}
@@ -150,7 +153,7 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
 
         elif self.cfg.SUPERVISION_2D.USE_2D_LOSS:
             total_loss = loss_2d / self.cfg.PROJECTION.NUM_VIEWS
-            
+
         elif self.cfg.SUPERVISION_3D.USE_3D_LOSS:
             loss_3d = torch.mean(self.emd(pred_pc, gt_pc))
             total_loss = loss_3d

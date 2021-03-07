@@ -19,9 +19,8 @@ import utils.network_utils
 
 from datetime import datetime as dt
 
-from models.networks import Pixel2Pointcloud
-from models.view_encoder import Encoder
-from models.view_estimater import ViewEstimater
+from models.networks_psgn import Pixel2Pointcloud_PSGN_FC
+from models.networks_graphx import Pixel2Pointcloud_GRAPHX
 
 from pyntcloud import PyntCloud
 
@@ -40,22 +39,17 @@ def evaluate_net(cfg):
     ])
 
     # Set up networks
-    # Set up networks
     # The parameters here need to be set in cfg
-    net = Pixel2Pointcloud(1, cfg.GRAPHX.NUM_INIT_POINTS,
-                          optimizer=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.LEARNING_RATE, weight_decay=cfg.TRAIN.WEIGHT_DECAY),
-                          scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
-                          use_graphx=cfg.GRAPHX.USE_GRAPHX)
-    
-    view_encoder = Encoder(cfg)
-
-    azi_classes, ele_classes = int(360 / cfg.CONST.BIN_SIZE), int(180 / cfg.CONST.BIN_SIZE)
-    view_estimater = ViewEstimater(cfg, azi_classes=azi_classes, ele_classes=ele_classes)
+    if cfg.NETWORK.REC_MODEL == 'GRAPHX':
+        net = Pixel2Pointcloud_GRAPHX(cfg=cfg,
+                                      in_channels=1, 
+                                      in_instances=cfg.GRAPHX.NUM_INIT_POINTS,
+                                      optimizer=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.GRAPHX_LEARNING_RATE, weight_decay=cfg.TRAIN.GRAPHX_WEIGHT_DECAY),
+                                      scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
+                                      use_graphx=cfg.GRAPHX.USE_GRAPHX)
 
     if torch.cuda.is_available():
         net = torch.nn.DataParallel(net).cuda()
-        view_encoder = torch.nn.DataParallel(view_encoder).cuda()
-        view_estimater = torch.nn.DataParallel(view_estimater).cuda()
     
     # Load weight
     # Load weight for encoder, decoder
@@ -63,18 +57,6 @@ def evaluate_net(cfg):
     rec_checkpoint = torch.load(cfg.EVALUATE.RECONSTRUCTION_WEIGHTS)
     net.load_state_dict(rec_checkpoint['net'])
     print('[INFO] Best reconstruction result at epoch %d ...' % rec_checkpoint['epoch_idx'])
-
-    # Load weight for view encoder
-    print('[INFO] %s Loading view estimation weights from %s ...' % (dt.now(), cfg.EVALUATE.VIEW_ENCODER_WEIGHTS))
-    view_enc_checkpoint = torch.load(cfg.EVALUATE.VIEW_ENCODER_WEIGHTS)
-    view_encoder.load_state_dict(view_enc_checkpoint['encoder_state_dict'])
-    print('[INFO] Best view encode result at epoch %d ...' % view_enc_checkpoint['epoch_idx'])
-
-    # Load weight for view estimater
-    print('[INFO] %s Loading view estimation weights from %s ...' % (dt.now(), cfg.EVALUATE.VIEW_ESTIMATION_WEIGHTS))
-    view_est_checkpoint = torch.load(cfg.EVALUATE.VIEW_ESTIMATION_WEIGHTS)
-    view_estimater.load_state_dict(view_est_checkpoint['view_estimator_state_dict'])
-    print('[INFO] Best view estimation result at epoch %d ...' % view_est_checkpoint['epoch_idx'])
 
     # evaluate the imgs in folder
     # evaluate first ten view
@@ -97,17 +79,9 @@ def evaluate_net(cfg):
             # get gt pointcloud
             gt_point_cloud_file = cfg.DATASETS.SHAPENET.POINT_CLOUD_PATH % (cfg.EVALUATE.TAXONOMY_ID, sample_name)
             gt_point_cloud = get_point_cloud(gt_point_cloud_file)
-
-            # get gt view
-            gt_view_file = cfg.DATASETS.SHAPENET.VIEW_PATH % (cfg.EVALUATE.TAXONOMY_ID, sample_name)
-            gt_view = get_view(gt_view_file, view_id)
         
             # evaluate single img
-            evaluate_on_img(cfg,
-                            net, view_encoder, view_estimater,
-                            input_img_path, view_id,
-                            eval_transforms, eval_id,
-                            gt_point_cloud, gt_view)
+            evaluate_on_img(cfg, net, input_img_path, eval_transforms, eval_id, view_id, gt_point_cloud)
 
 
 def get_point_cloud(point_cloud_file):
@@ -117,19 +91,10 @@ def get_point_cloud(point_cloud_file):
     if suffix == '.ply':
         point_cloud = PyntCloud.from_file(point_cloud_file)
         point_cloud = np.array(point_cloud.points)
+    elif suffix == '.npy':
+        point_cloud = np.load(point_cloud_file)
+
     return point_cloud
-
-
-def get_view(view_file, view_id):
-    with open(view_file) as f:
-        lines = f.readlines()
-    
-    view = lines[view_id]
-    view = view.split()
-    # get first two (azimuth, elevation)
-    view = view[:2]
-    view = [round(float(item)) if float(item) < 359.5 else 0 for item in view]
-    return view
 
 
 def init_pointcloud_loader(num_points):
@@ -145,21 +110,24 @@ def init_pointcloud_loader(num_points):
     return XYZ.astype('float32')
 
 
-def evaluate_on_img(cfg, 
-                    net, view_encoder, view_estimater,
-                    input_img_path, view_id,
-                    eval_transforms, eval_id,
-                    gt_point_cloud, gt_view):
+def evaluate_on_img(cfg, net, input_img_path, eval_transforms, eval_id, view_id, gt_point_cloud):
     # load img
-    img_np = cv2.imread(input_img_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.
-    sample = np.array([img_np])
-    rendering_images = eval_transforms(rendering_images=sample)
+    sample = cv2.imread(input_img_path, cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255.
 
+    if cfg.NETWORK.REC_MODEL == 'PSGN_FC':
+        sample = cv2.resize(sample, (self.grid_h, self.grid_w))
+    elif cfg.NETWORK.REC_MODEL == 'GRAPHX':
+        sample = cv2.resize(sample, (224, 224))
+    else:
+        print('Invalid model name, please check the config.py (NET_WORK.REC_MODEL)')
+        sys.exit(2)
+            
+    rendering_images = eval_transforms(rendering_images=sample)
+    
     # load init point clouds
     init_point_cloud_np = init_pointcloud_loader(cfg.GRAPHX.NUM_INIT_POINTS)
     init_point_clouds = np.array([init_point_cloud_np])
     init_point_clouds = torch.from_numpy(init_point_clouds)
-
 
     # load gt pointclouds
     ground_truth_point_clouds = np.array([gt_point_cloud])
@@ -170,32 +138,19 @@ def evaluate_on_img(cfg,
         # Only one image per sample
         rendering_images = torch.squeeze(rendering_images, 1)
         
-         # Get data from data loader
-        rendering_images = utils.network_utils.var_or_cuda(rendering_images)
-        init_point_clouds = utils.network_utils.var_or_cuda(init_point_clouds)
-        ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
+        # Get data from data loader
+        input_imgs = utils.network_utils.var_or_cuda(rendering_images)
+        model_gt = utils.network_utils.var_or_cuda(model_gt)
+        edge_gt = utils.network_utils.var_or_cuda(edge_gt)
+        model_x = utils.network_utils.var_or_cuda(model_x)
+        model_y = utils.network_utils.var_or_cuda(model_y)
+        init_pc = utils.network_utils.var_or_cuda(init_point_clouds)
+        gt_pc = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
         
         #=================================================#
         #           Evaluate the encoder, decoder         #
         #=================================================#
-        emd_loss, generated_point_clouds = net.module.loss(rendering_images, init_point_clouds, ground_truth_point_clouds, 'mean')
-
-        #=================================================#
-        #          Evaluate the view estimater            #
-        #=================================================#
-        vgg_features, _ = view_encoder(rendering_images)
-        output = view_estimater(vgg_features)
-        
-        #=================================================#
-        #              Get predict view                   #
-        #=================================================#
-        preds_cls = utils.view_pred_utils.get_pred_from_cls_output([output[0], output[1]])
-            
-        preds = []
-        for n in range(len(preds_cls)):
-            pred_delta = output[n + 2]
-            delta_value = pred_delta[torch.arange(pred_delta.size(0)), preds_cls[n].long()].tanh() / 2
-            preds.append((preds_cls[n].float() + delta_value + 0.5) * cfg.CONST.BIN_SIZE)
+        total_loss, loss_2d, loss_3d, pred_pc = net.module.loss(input_imgs, init_pc, gt_pc, model_x, model_y, model_gt, edge_gt)
 
         # Save a copy of image
         evaluate_img_dir = os.path.join(cfg.EVALUATE.INPUT_IMAGE_FOLDER, eval_id)
@@ -205,16 +160,13 @@ def evaluate_on_img(cfg,
         
 
         # Predict Pointcloud
-        g_pc = generated_point_clouds[0].detach().cpu().numpy()
-        pred_view = []
-        pred_view.append(preds[0][0].detach().cpu().numpy())
-        pred_view.append(preds[1][0].detach().cpu().numpy())
+        g_pc = pred_pc[0].detach().cpu().numpy()
         rendering_views = utils.point_cloud_visualization.get_point_cloud_image(g_pc,
                                                                                 os.path.join(cfg.EVALUATE.OUTPUT_FOLDER, 'reconstruction', eval_id),
-                                                                                view_id, "reconstruction", pred_view)
+                                                                                view_id, "reconstruction")
                 
         # Groundtruth Pointcloud
         gt_pc = gt_point_cloud
         rendering_views = utils.point_cloud_visualization.get_point_cloud_image(gt_pc, 
                                                                                 os.path.join(cfg.EVALUATE.OUTPUT_FOLDER, 'ground truth', eval_id),
-                                                                                view_id, "ground truth", gt_view)
+                                                                                view_id, "ground truth")

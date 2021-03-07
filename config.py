@@ -14,10 +14,11 @@ __C.DATASETS                                = edict()
 __C.DATASETS.SHAPENET                       = edict()
 __C.DATASETS.SHAPENET.TAXONOMY_FILE_PATH    = './datasets/rec.json'
 
-__C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_rendered/%s/%s/render_%d.png'
-__C.DATASETS.SHAPENET.DEPTH_PATH            = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_rendered/%s/%s/depth_%d.png'
-__C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_pointclouds/%s/%s/pointcloud_1024.npy'
-__C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_rendered/%s/%s/view.txt'
+__C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_sketch/%s/%s/render_%d.png'
+__C.DATASETS.SHAPENET.DEPTH_PATH            = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_sketch/%s/%s/depth_%d.png'
+# __C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_pointclouds/%s/%s/pointcloud_2048.npy'
+__C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/shape_net_core_uniform_samples_2048/%s/%s.ply'
+__C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_sketch/%s/%s/view.txt'
 
 #
 # Dataset
@@ -39,11 +40,11 @@ __C.CONST.DEVICE_NUM                        = 1
 __C.CONST.RNG_SEED                          = 0
 __C.CONST.IMG_W                             = 64       # Image width for input
 __C.CONST.IMG_H                             = 64       # Image height for input
-__C.CONST.BATCH_SIZE                        = 1
+__C.CONST.BATCH_SIZE                        = 2
 __C.CONST.CROP_IMG_W                        = 200       # Dummy property for Pascal 3D
 __C.CONST.CROP_IMG_H                        = 200       # Dummy property for Pascal 3D
 __C.CONST.BIN_SIZE                          = 15
-__C.CONST.NUM_POINTS                        = 1024
+__C.CONST.NUM_POINTS                        = 2048
 
 #
 # Directories
@@ -65,7 +66,7 @@ __C.NETWORK.TCONV_USE_BIAS                  = False
 #
 __C.GRAPHX                                 = edict()
 __C.GRAPHX.USE_GRAPHX                      = True
-__C.GRAPHX.NUM_INIT_POINTS                 = 1024
+__C.GRAPHX.NUM_INIT_POINTS                 = 2048
 
 #
 # 2d supervision
@@ -78,7 +79,7 @@ __C.SUPERVISION_2D.LAMDA_2D_LOSS           = 1.
 # 3d supervision
 #
 __C.SUPERVISION_3D                         = edict()
-__C.SUPERVISION_3D.USE_3D_LOSS             = True
+__C.SUPERVISION_3D.USE_3D_LOSS             = False
 __C.SUPERVISION_3D.LAMDA_3D_LOSS           = 1.
 
 #
@@ -109,8 +110,8 @@ __C.TRAIN.NUM_WORKER                        = 4             # number of data wor
 __C.TRAIN.NUM_EPOCHES                       = 1000
 
 # __C.TRAIN.VIEW_ESTIMATOR_LEARNING_RATE      = 5e-4
-__C.TRAIN.MILESTONES                        = [40]
-__C.TRAIN.VIEW_ESTIMATOR_LR_MILESTONES      = [40]
+__C.TRAIN.MILESTONES                        = [400]
+__C.TRAIN.VIEW_ESTIMATOR_LR_MILESTONES      = [400]
 
 # train parameters for graphx
 __C.TRAIN.GRAPHX_LEARNING_RATE              = 5e-5
@@ -135,10 +136,10 @@ __C.TEST                                    = edict()
 __C.TEST.RANDOM_BG_COLOR_RANGE              = [[240, 240], [240, 240], [240, 240]]
 __C.TEST.VOXEL_THRESH                       = [.2, .3, .4, .5]
 __C.TEST.NUM_WORKER                         = 4             # number of data workers
-__C.TEST.RECONSTRUCTION_WEIGHTS             = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/output_v4/checkpoints/best-reconstruction-ckpt.pth'
+__C.TEST.RECONSTRUCTION_WEIGHTS             = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/output_3d/checkpoints/best-reconstruction-ckpt.pth'
 __C.TEST.VIEW_ENCODER_WEIGHTS               = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/output_v3/checkpoints/best-reconstruction-ckpt.pth'
 __C.TEST.VIEW_ESTIMATION_WEIGHTS            = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/output_v3/checkpoints/best-view-ckpt.pth'
-__C.TEST.RESULT_PATH                        = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/test.txt'
+__C.TEST.RESULT_PATH                        = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/output_3d/test.txt'
 
 #
 # Evaluating options

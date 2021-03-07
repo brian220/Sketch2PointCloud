@@ -86,10 +86,6 @@ def valid_net(cfg,
                 rendering_views = utils.point_cloud_visualization.get_point_cloud_image(gt_pc, os.path.join(img_dir, 'test'),
                                                                                         sample_idx, epoch_idx, "ground truth")
                 test_writer.add_image('Test Sample#%02d/Point Cloud GroundTruth' % sample_idx, rendering_views, epoch_idx)
-        
-        # only test first 20 samples
-        if sample_idx == 19:
-            break
 
     if test_writer is not None:
         test_writer.add_scalar('Total/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx)
