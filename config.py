@@ -14,10 +14,10 @@ __C.DATASETS                                = edict()
 __C.DATASETS.SHAPENET                       = edict()
 __C.DATASETS.SHAPENET.TAXONOMY_FILE_PATH    = './datasets/rec.json'
 
-__C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_rendered/%s/%s/render_%d.png'
-__C.DATASETS.SHAPENET.DEPTH_PATH            = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_rendered/%s/%s/depth_%d.png'
-__C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_pointclouds/%s/%s/pointcloud_1024.npy'
-__C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_rendered/%s/%s/view.txt'
+__C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/itri/Files_2TB/chaoyu/pointcloud3d/dataset/ShapeNet_sketch/%s/%s/render_%d.png'
+__C.DATASETS.SHAPENET.DEPTH_PATH            = '/media/itri/Files_2TB/chaoyu/pointcloud3d/dataset/ShapeNet_sketch/%s/%s/depth_%d.png'
+__C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/itri/Files_2TB/chaoyu/pointcloud3d/dataset/capnet_pointclouds/ShapeNet_pointclouds/%s/%s/pointcloud_1024.npy'
+__C.DATASETS.SHAPENET.VIEW_PATH             = '/media/itri/Files_2TB/chaoyu/pointcloud3d/dataset/ShapeNet_sketch/%s/%s/view.txt'
 
 #
 # Dataset
@@ -39,7 +39,7 @@ __C.CONST.DEVICE_NUM                        = 1
 __C.CONST.RNG_SEED                          = 0
 __C.CONST.IMG_W                             = 64       # Image width for input
 __C.CONST.IMG_H                             = 64       # Image height for input
-__C.CONST.BATCH_SIZE                        = 1
+__C.CONST.BATCH_SIZE                        = 4
 __C.CONST.CROP_IMG_W                        = 200       # Dummy property for Pascal 3D
 __C.CONST.CROP_IMG_H                        = 200       # Dummy property for Pascal 3D
 __C.CONST.BIN_SIZE                          = 15
@@ -49,7 +49,7 @@ __C.CONST.NUM_POINTS                        = 1024
 # Directories
 #
 __C.DIR                                     = edict()
-__C.DIR.OUT_PATH                            = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/output'
+__C.DIR.OUT_PATH                            = '/media/itri/Files_2TB/chaoyu/pointcloud3d/sketch_projection/output'
 __C.DIR.RANDOM_BG_PATH                      = '/home/hzxie/Datasets/SUN2012/JPEGImages'
 
 #
@@ -106,7 +106,7 @@ __C.PROJECTION.LAMDA_AFF_BWD               = 1.
 __C.TRAIN                                   = edict()
 __C.TRAIN.RESUME_TRAIN                      = False
 __C.TRAIN.NUM_WORKER                        = 4             # number of data workers
-__C.TRAIN.NUM_EPOCHES                       = 1000
+__C.TRAIN.NUM_EPOCHES                       = 200
 
 # __C.TRAIN.VIEW_ESTIMATOR_LEARNING_RATE      = 5e-4
 __C.TRAIN.MILESTONES                        = [40]
