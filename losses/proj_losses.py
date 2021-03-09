@@ -11,17 +11,24 @@ class ProjectLoss(torch.nn.Module):
     
     def __init__(self, cfg):
         super(ProjectLoss, self).__init__()
+        self.cfg = cfg
         self.use_cuda = torch.cuda.is_available()
         self.grid_h = cfg.PROJECTION.GRID_H
         self.grid_w = cfg.PROJECTION.GRID_W
     
     def forward(self, preds, gts, grid_dist_tensor):
+        """
         loss, fwd, bwd = self.get_loss_proj(preds, gts, 
-                                            loss_type='bce_prob',  w=1.0, min_dist_loss=True, dist_mat=grid_dist_tensor, args=None, 
+                                            loss_type=self.cfg.SUPERVISION_2D.LOSS_TYPE,  w=1.0, min_dist_loss=self.cfg.SUPERVISION_2D.USE_AFFINITY, dist_mat=grid_dist_tensor, args=None, 
                                             grid_h=self.grid_h, grid_w=self.grid_w)
-        return loss, fwd, bwd
+        return loss, fwd, bwd"""
+        
+        loss = self.get_loss_proj(preds, gts, 
+                                  loss_type=self.cfg.SUPERVISION_2D.LOSS_TYPE,  w=1.0, min_dist_loss=self.cfg.SUPERVISION_2D.USE_AFFINITY, dist_mat=grid_dist_tensor, args=None, 
+                                  grid_h=self.grid_h, grid_w=self.grid_w)
+        return loss
 
-    def get_loss_proj(self, pred, gt, loss_type='bce', w=1., min_dist_loss=None,
+    def get_loss_proj(self, pred, gt, loss_type='bce', w=1., min_dist_loss=False,
                       dist_mat=None, args=None, grid_h=64, grid_w=64):
         """
         Compute projection loss (bce + affinity loss)
@@ -33,6 +40,10 @@ class ProjectLoss(torch.nn.Module):
             # print ('\nBCE Logits Loss\n')
             loss_function = torch.nn.BCEWithLogitsLoss(weight = None, reduction='none')
             loss = loss_function(pred, gt)
+    
+        if loss_type == 'l2_sq':
+            # print '\nL2 Squared Loss\n'
+            loss = (pred-gt)**2
         """
         if loss == 'weighted_bce':
             print '\nWeighted BCE Logits Loss\n'
@@ -50,8 +61,9 @@ class ProjectLoss(torch.nn.Module):
             # clprint ('\nBCE Loss\n')
             epsilon = 1e-8
             loss = -gt*torch.log(pred+epsilon)*w - (1-gt)*torch.log(torch.abs(1-pred-epsilon))
-    
-        if min_dist_loss != None:
+        
+        
+        if min_dist_loss:
             # Affinity loss - essentially 2D chamfer distance between GT and 
             # predicted masks
             dist_mat += 1.
@@ -70,7 +82,8 @@ class ProjectLoss(torch.nn.Module):
             min_dist = torch.amin(dist_masked, dim=(3,4))
             min_dist_inv = torch.amin(dist_masked_inv, dim=(3,4))
     
-        return loss, min_dist, min_dist_inv
+        # return loss, min_dist, min_dist_inv
+        return loss
     
 
 def grid_dist(grid_h, grid_w):

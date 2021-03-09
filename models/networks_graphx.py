@@ -79,9 +79,12 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
 
     def loss(self, input, init_pc, gt_pc, view_az, view_el, proj_gt, edge_gt):
         pred_pc = self(input, init_pc)
-
-        grid_dist_np = grid_dist(grid_h=self.cfg.PROJECTION.GRID_H, grid_w=self.cfg.PROJECTION.GRID_W).astype(np.float32)
-        grid_dist_tensor = utils.network_utils.var_or_cuda(torch.from_numpy(grid_dist_np))
+        
+        if self.cfg.SUPERVISION_2D.USE_AFFINITY:
+           grid_dist_np = grid_dist(grid_h=self.cfg.PROJECTION.GRID_H, grid_w=self.cfg.PROJECTION.GRID_W).astype(np.float32)
+           grid_dist_tensor = utils.network_utils.var_or_cuda(torch.from_numpy(grid_dist_np))
+        else:
+           grid_dist_tensor = None
 
         # Use 2D projection loss to train
         proj_pred = {}
@@ -113,7 +116,8 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
             for idx in range(0, self.cfg.PROJECTION.NUM_VIEWS):
                 # Projection
                 proj_pred[idx] = self.projector(pred_pc, view_az[:,idx], view_el[:,idx])
-    
+                
+                """
                 # Projection loss
                 loss_bce[idx], fwd[idx], bwd[idx] = self.proj_loss(preds=proj_pred[idx], gts=proj_gt[:,idx], grid_dist_tensor=grid_dist_tensor)
                 loss_fwd[idx] = 1e-4 * torch.mean(fwd[idx])
@@ -123,7 +127,13 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
                 loss_2d += self.cfg.PROJECTION.LAMDA_BCE * torch.mean(loss_bce[idx]) +\
                            self.cfg.PROJECTION.LAMDA_AFF_FWD * loss_fwd[idx] +\
                            self.cfg.PROJECTION.LAMDA_AFF_BWD * loss_bwd[idx]
+                """ 
+                # Projection loss
+                loss_bce[idx] = self.proj_loss(preds=proj_pred[idx], gts=proj_gt[:,idx], grid_dist_tensor=grid_dist_tensor)
     
+                 # Loss = projection loss + edge projection loss
+                loss_2d += self.cfg.PROJECTION.LAMDA_BCE * torch.mean(loss_bce[idx])
+                    
                 if self.cfg.EDGE_LOSS.USE_EDGE_LOSS:
                     # Edge prediction of projection
                     proj_pred[idx] = proj_pred[idx].unsqueeze(1) # (BS, 1, H, W)
@@ -145,7 +155,6 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
         # Total loss
         if self.cfg.SUPERVISION_2D.USE_2D_LOSS and self.cfg.SUPERVISION_3D.USE_3D_LOSS:
             # scale the pred and gt to same size xyz between [-0.5, 0.5]
-            # scaled_pred_pc, scaled_gt_pc = self.scale(pred_pc, gt_pc)
             loss_3d = torch.mean(self.emd(pred_pc, gt_pc))
 
             total_loss = self.cfg.SUPERVISION_2D.LAMDA_2D_LOSS * (loss_2d/self.cfg.PROJECTION.NUM_VIEWS) +\

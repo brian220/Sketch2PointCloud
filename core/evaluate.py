@@ -57,6 +57,7 @@ def evaluate_net(cfg):
     rec_checkpoint = torch.load(cfg.EVALUATE.RECONSTRUCTION_WEIGHTS)
     net.load_state_dict(rec_checkpoint['net'])
     print('[INFO] Best reconstruction result at epoch %d ...' % rec_checkpoint['epoch_idx'])
+    epoch_id = int(rec_checkpoint['epoch_idx'])
 
     # evaluate the imgs in folder
     # evaluate first ten view
@@ -68,20 +69,19 @@ def evaluate_net(cfg):
         info = info.split()
         eval_id = info[0]
         sample_name = info[1]
-        # view_id = int(info[2])
+        view_id = int(info[2])
         
         print("Evaluate on img :", eval_id)
 
-        for view_id in range(0, 10):
-            # get img path
-            input_img_path = cfg.DATASETS.SHAPENET.RENDERING_PATH% (cfg.EVALUATE.TAXONOMY_ID, sample_name, view_id)
+        # get img path
+        input_img_path = cfg.DATASETS.SHAPENET.RENDERING_PATH% (cfg.EVALUATE.TAXONOMY_ID, sample_name, view_id)
 
-            # get gt pointcloud
-            gt_point_cloud_file = cfg.DATASETS.SHAPENET.POINT_CLOUD_PATH % (cfg.EVALUATE.TAXONOMY_ID, sample_name)
-            gt_point_cloud = get_point_cloud(gt_point_cloud_file)
+        # get gt pointcloud
+        gt_point_cloud_file = cfg.DATASETS.SHAPENET.POINT_CLOUD_PATH % (cfg.EVALUATE.TAXONOMY_ID, sample_name)
+        gt_point_cloud = get_point_cloud(gt_point_cloud_file)
         
-            # evaluate single img
-            evaluate_on_img(cfg, net, input_img_path, eval_transforms, eval_id, view_id, gt_point_cloud)
+        # evaluate single img
+        evaluate_on_img(cfg, net, input_img_path, eval_transforms, eval_id, view_id, epoch_id, gt_point_cloud)
 
 
 def get_point_cloud(point_cloud_file):
@@ -110,7 +110,7 @@ def init_pointcloud_loader(num_points):
     return XYZ.astype('float32')
 
 
-def evaluate_on_img(cfg, net, input_img_path, eval_transforms, eval_id, view_id, gt_point_cloud):
+def evaluate_on_img(cfg, net, input_img_path, eval_transforms, eval_id, view_id, epoch_id, gt_point_cloud):
     # load img
     sample = cv2.imread(input_img_path, cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255.
 
@@ -121,9 +121,13 @@ def evaluate_on_img(cfg, net, input_img_path, eval_transforms, eval_id, view_id,
     else:
         print('Invalid model name, please check the config.py (NET_WORK.REC_MODEL)')
         sys.exit(2)
-            
-    rendering_images = eval_transforms(rendering_images=sample)
-    
+
+    sample = np.expand_dims(sample, -1)
+    samples = []
+    samples.append(sample)
+    samples = np.array(samples).astype(np.float32) 
+    rendering_images = eval_transforms(rendering_images=samples)
+
     # load init point clouds
     init_point_cloud_np = init_pointcloud_loader(cfg.GRAPHX.NUM_INIT_POINTS)
     init_point_clouds = np.array([init_point_cloud_np])
@@ -135,25 +139,18 @@ def evaluate_on_img(cfg, net, input_img_path, eval_transforms, eval_id, view_id,
 
     # inference model
     with torch.no_grad():
-        # Only one image per sample
-        rendering_images = torch.squeeze(rendering_images, 1)
-        
         # Get data from data loader
         input_imgs = utils.network_utils.var_or_cuda(rendering_images)
-        model_gt = utils.network_utils.var_or_cuda(model_gt)
-        edge_gt = utils.network_utils.var_or_cuda(edge_gt)
-        model_x = utils.network_utils.var_or_cuda(model_x)
-        model_y = utils.network_utils.var_or_cuda(model_y)
         init_pc = utils.network_utils.var_or_cuda(init_point_clouds)
         gt_pc = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
         
         #=================================================#
         #           Evaluate the encoder, decoder         #
         #=================================================#
-        total_loss, loss_2d, loss_3d, pred_pc = net.module.loss(input_imgs, init_pc, gt_pc, model_x, model_y, model_gt, edge_gt)
+        pred_pc = net(input_imgs, init_pc)
 
         # Save a copy of image
-        evaluate_img_dir = os.path.join(cfg.EVALUATE.INPUT_IMAGE_FOLDER, eval_id)
+        evaluate_img_dir = os.path.join(cfg.EVALUATE.INPUT_IMAGE_FOLDER)
         if not os.path.exists(evaluate_img_dir):
             os.mkdir(evaluate_img_dir)
         copyfile(input_img_path, os.path.join(evaluate_img_dir, str(view_id) + '.png'))
@@ -162,11 +159,11 @@ def evaluate_on_img(cfg, net, input_img_path, eval_transforms, eval_id, view_id,
         # Predict Pointcloud
         g_pc = pred_pc[0].detach().cpu().numpy()
         rendering_views = utils.point_cloud_visualization.get_point_cloud_image(g_pc,
-                                                                                os.path.join(cfg.EVALUATE.OUTPUT_FOLDER, 'reconstruction', eval_id),
-                                                                                view_id, "reconstruction")
+                                                                                os.path.join(cfg.EVALUATE.OUTPUT_FOLDER, 'reconstruction'),
+                                                                                view_id, epoch_id, "reconstruction")
                 
         # Groundtruth Pointcloud
         gt_pc = gt_point_cloud
         rendering_views = utils.point_cloud_visualization.get_point_cloud_image(gt_pc, 
-                                                                                os.path.join(cfg.EVALUATE.OUTPUT_FOLDER, 'ground truth', eval_id),
-                                                                                view_id, "ground truth")
+                                                                                os.path.join(cfg.EVALUATE.OUTPUT_FOLDER, 'ground truth'),
+                                                                                view_id, epoch_id, "ground truth")
