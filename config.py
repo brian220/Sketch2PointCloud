@@ -14,18 +14,10 @@ __C.DATASETS                                = edict()
 __C.DATASETS.SHAPENET                       = edict()
 __C.DATASETS.SHAPENET.TAXONOMY_FILE_PATH    = './datasets/rec.json'
 
-<<<<<<< HEAD
 __C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/itri/Files_2TB/chaoyu/pointcloud3d/dataset/ShapeNet_sketch/%s/%s/render_%d.png'
 __C.DATASETS.SHAPENET.DEPTH_PATH            = '/media/itri/Files_2TB/chaoyu/pointcloud3d/dataset/ShapeNet_sketch/%s/%s/depth_%d.png'
-__C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/itri/Files_2TB/chaoyu/pointcloud3d/dataset/capnet_pointclouds/ShapeNet_pointclouds/%s/%s/pointcloud_1024.npy'
+__C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/itri/Files_2TB/chaoyu/pointcloud3d/dataset/shape_net_core_uniform_samples_2048/%s/%s.ply'
 __C.DATASETS.SHAPENET.VIEW_PATH             = '/media/itri/Files_2TB/chaoyu/pointcloud3d/dataset/ShapeNet_sketch/%s/%s/view.txt'
-=======
-__C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_sketch/%s/%s/render_%d.png'
-__C.DATASETS.SHAPENET.DEPTH_PATH            = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_sketch/%s/%s/depth_%d.png'
-# __C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_pointclouds/%s/%s/pointcloud_2048.npy'
-__C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/shape_net_core_uniform_samples_2048/%s/%s.ply'
-__C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_sketch/%s/%s/view.txt'
->>>>>>> 8fd99e7d7455662462461f1a60ac92738b6554e4
 
 #
 # Dataset
@@ -47,11 +39,7 @@ __C.CONST.DEVICE_NUM                        = 1
 __C.CONST.RNG_SEED                          = 0
 __C.CONST.IMG_W                             = 64       # Image width for input
 __C.CONST.IMG_H                             = 64       # Image height for input
-<<<<<<< HEAD
 __C.CONST.BATCH_SIZE                        = 4
-=======
-__C.CONST.BATCH_SIZE                        = 2
->>>>>>> 8fd99e7d7455662462461f1a60ac92738b6554e4
 __C.CONST.CROP_IMG_W                        = 200       # Dummy property for Pascal 3D
 __C.CONST.CROP_IMG_H                        = 200       # Dummy property for Pascal 3D
 __C.CONST.BIN_SIZE                          = 15
@@ -90,7 +78,7 @@ __C.SUPERVISION_2D.LAMDA_2D_LOSS           = 1.
 # 3d supervision
 #
 __C.SUPERVISION_3D                         = edict()
-__C.SUPERVISION_3D.USE_3D_LOSS             = False
+__C.SUPERVISION_3D.USE_3D_LOSS             = True
 __C.SUPERVISION_3D.LAMDA_3D_LOSS           = 1.
 
 #
@@ -121,8 +109,8 @@ __C.TRAIN.NUM_WORKER                        = 4             # number of data wor
 __C.TRAIN.NUM_EPOCHES                       = 200
 
 # __C.TRAIN.VIEW_ESTIMATOR_LEARNING_RATE      = 5e-4
-__C.TRAIN.MILESTONES                        = [400]
-__C.TRAIN.VIEW_ESTIMATOR_LR_MILESTONES      = [400]
+__C.TRAIN.MILESTONES                        = [40]
+__C.TRAIN.VIEW_ESTIMATOR_LR_MILESTONES      = [40]
 
 # train parameters for graphx
 __C.TRAIN.GRAPHX_LEARNING_RATE              = 5e-5

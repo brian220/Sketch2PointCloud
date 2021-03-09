@@ -145,8 +145,8 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
         # Total loss
         if self.cfg.SUPERVISION_2D.USE_2D_LOSS and self.cfg.SUPERVISION_3D.USE_3D_LOSS:
             # scale the pred and gt to same size xyz between [-0.5, 0.5]
-            scaled_pred_pc, scaled_gt_pc = self.scale(pred_pc, gt_pc)
-            loss_3d = torch.mean(self.emd(scaled_pred_pc, scaled_gt_pc))
+            # scaled_pred_pc, scaled_gt_pc = self.scale(pred_pc, gt_pc)
+            loss_3d = torch.mean(self.emd(pred_pc, gt_pc))
 
             total_loss = self.cfg.SUPERVISION_2D.LAMDA_2D_LOSS * (loss_2d/self.cfg.PROJECTION.NUM_VIEWS) +\
                          self.cfg.SUPERVISION_3D.LAMDA_3D_LOSS * loss_3d
