@@ -72,14 +72,16 @@ __C.GRAPHX.NUM_INIT_POINTS                 = 2048
 # 2d supervision
 #
 __C.SUPERVISION_2D                         = edict()
+__C.SUPERVISION_2D.LOSS_TYPE               = 'l2_sq'
+__C.SUPERVISION_2D.USE_AFFINITY            = False
 __C.SUPERVISION_2D.USE_2D_LOSS             = True
-__C.SUPERVISION_2D.LAMDA_2D_LOSS           = 1.
+__C.SUPERVISION_2D.LAMDA_2D_LOSS           = 10.
 
 #
 # 3d supervision
 #
 __C.SUPERVISION_3D                         = edict()
-__C.SUPERVISION_3D.USE_3D_LOSS             = False
+__C.SUPERVISION_3D.USE_3D_LOSS             = True
 __C.SUPERVISION_3D.LAMDA_3D_LOSS           = 1.
 
 #
@@ -146,10 +148,11 @@ __C.TEST.RESULT_PATH                        = '/media/caig/FECA2C89CA2C406F/sket
 #
 __C.EVALUATE                                = edict()
 __C.EVALUATE.TAXONOMY_ID                    = '03001627'
-__C.EVALUATE.INPUT_IMAGE_FOLDER             = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/evaluate/evaluate_input_img/'
-__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/evaluate/evaluate_output/'
-__C.EVALUATE.INFO_FILE                      = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/evaluate/eval_chair.txt'
-__C.EVALUATE.RECONSTRUCTION_WEIGHTS         = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/output_v4/checkpoints/best-reconstruction-ckpt.pth'
+__C.EVALUATE.INPUT_IMAGE_FOLDER             = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_3d/evaluate_input_img'
+__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_3d/evluate_output'
+__C.EVALUATE.INFO_FILE                      = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_3d/eval_chair.txt'
+__C.EVALUATE.RECONSTRUCTION_WEIGHTS         = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/output_3d/checkpoints/best-reconstruction-ckpt.pth'
+
 __C.EVALUATE.VIEW_ENCODER_WEIGHTS           = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/output_v3/checkpoints/best-reconstruction-ckpt.pth'
 __C.EVALUATE.VIEW_ESTIMATION_WEIGHTS        = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/output_v3/checkpoints/best-view-ckpt.pth'
 
