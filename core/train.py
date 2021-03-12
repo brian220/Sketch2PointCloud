@@ -81,7 +81,7 @@ def train_net(cfg):
     # best_emd =  10000 # less is better
     best_loss = 100000
     best_epoch = -1
-    """
+    
     if 'WEIGHTS' in cfg.CONST and cfg.TRAIN.RESUME_TRAIN:
         print('[INFO] %s Recovering from %s ...' % (dt.now(), cfg.CONST.WEIGHTS))
         checkpoint = torch.load(cfg.CONST.WEIGHTS)
@@ -91,7 +91,7 @@ def train_net(cfg):
 
         print('[INFO] %s Recover complete. Current epoch #%d at epoch #%d.' %
               (dt.now(), init_epoch, cfg.TRAIN.NUM_EPOCHES))
-    """
+    
 
     # Summary writer for TensorBoard
     output_dir = os.path.join(cfg.DIR.OUT_PATH, '%s')

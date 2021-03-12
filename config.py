@@ -40,11 +40,12 @@ __C.CONST.DEVICE_NUM                        = 1
 __C.CONST.RNG_SEED                          = 0
 __C.CONST.IMG_W                             = 64       # Image width for input
 __C.CONST.IMG_H                             = 64       # Image height for input
-__C.CONST.BATCH_SIZE                        = 2
+__C.CONST.BATCH_SIZE                        = 4
 __C.CONST.CROP_IMG_W                        = 200       # Dummy property for Pascal 3D
 __C.CONST.CROP_IMG_H                        = 200       # Dummy property for Pascal 3D
 __C.CONST.BIN_SIZE                          = 15
 __C.CONST.NUM_POINTS                        = 2048
+__C.CONST.WEIGHTS                           = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/output_xy_plane_init/checkpoints/best-reconstruction-ckpt.pth'
 
 #
 # Directories
@@ -72,7 +73,7 @@ __C.GRAPHX.NUM_INIT_POINTS                 = 2048
 # 2d supervision
 #
 __C.SUPERVISION_2D                         = edict()
-__C.SUPERVISION_2D.LOSS_TYPE               = 'l2_sq'
+__C.SUPERVISION_2D.LOSS_TYPE               = 'bce_prob'
 __C.SUPERVISION_2D.USE_AFFINITY            = False
 __C.SUPERVISION_2D.USE_2D_LOSS             = True
 __C.SUPERVISION_2D.LAMDA_2D_LOSS           = 10.
@@ -99,6 +100,7 @@ __C.PROJECTION.GRID_H                      = 64
 __C.PROJECTION.GRID_W                      = 64
 __C.PROJECTION.SIGMA_SQ                    = 0.5
 __C.PROJECTION.NUM_VIEWS                   = 4
+# __C.PROJECTION.NUM_VIEWS                   = 1 # only for test time optimization
 __C.PROJECTION.LAMDA_BCE                   = 1.
 __C.PROJECTION.LAMDA_AFF_FWD               = 1.
 __C.PROJECTION.LAMDA_AFF_BWD               = 1.
@@ -107,7 +109,7 @@ __C.PROJECTION.LAMDA_AFF_BWD               = 1.
 # Training
 #
 __C.TRAIN                                   = edict()
-__C.TRAIN.RESUME_TRAIN                      = False
+__C.TRAIN.RESUME_TRAIN                      = True
 __C.TRAIN.NUM_WORKER                        = 4             # number of data workers
 __C.TRAIN.NUM_EPOCHES                       = 1000
 
@@ -130,7 +132,6 @@ __C.TRAIN.GAMMA                             = .3
 __C.TRAIN.SAVE_FREQ                         = 100            # weights will be overwritten every save_freq epoch
 __C.TRAIN.TRANS_LAMDA                       = 10
 
-
 #
 # Testing options
 #
@@ -148,10 +149,10 @@ __C.TEST.RESULT_PATH                        = '/media/caig/FECA2C89CA2C406F/sket
 #
 __C.EVALUATE                                = edict()
 __C.EVALUATE.TAXONOMY_ID                    = '03001627'
-__C.EVALUATE.INPUT_IMAGE_FOLDER             = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_3d/evaluate_input_img'
-__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_3d/evluate_output'
-__C.EVALUATE.INFO_FILE                      = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_3d/eval_chair.txt'
-__C.EVALUATE.RECONSTRUCTION_WEIGHTS         = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/output_3d/checkpoints/best-reconstruction-ckpt.pth'
+__C.EVALUATE.INPUT_IMAGE_FOLDER             = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_xy_plane_init/evaluate_input_img'
+__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_xy_plane_init/evaluate_output'
+__C.EVALUATE.INFO_FILE                      = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_xy_plane_init/eval_chair.txt'
+__C.EVALUATE.RECONSTRUCTION_WEIGHTS         = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/output_xy_plane_init/checkpoints/ckpt-epoch-0400.pth'
 
 __C.EVALUATE.VIEW_ENCODER_WEIGHTS           = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/output_v3/checkpoints/best-reconstruction-ckpt.pth'
 __C.EVALUATE.VIEW_ESTIMATION_WEIGHTS        = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/output_v3/checkpoints/best-view-ckpt.pth'
@@ -174,3 +175,10 @@ __C.EVALUATE_FIXED_VIEW.RESULT_DIR                  = '/media/caig/FECA2C89CA2C4
 __C.EVALUATE_FIXED_VIEW.SAMPLE_FILE                 = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/evaluate_fixed_view/evaluate_sample.txt'
 __C.EVALUATE_FIXED_VIEW.VIEW_FILE                   = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/evaluate_fixed_view/fixed_view.txt'
 __C.EVALUATE_FIXED_VIEW.RECONSTRUCTION_WEIGHTS      = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/output_v4/checkpoints/best-reconstruction-ckpt.pth'
+
+#
+# Test time optimization
+#
+__C.TEST_OPT                                        = edict()
+__C.TEST_OPT.RECONSTRUCTION_WEIGHTS                 = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/output_xy_plane_init_l210/checkpoints/best-reconstruction-ckpt.pth'
+__C.TEST_OPT.OUT_PATH                               = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/test_opt'
