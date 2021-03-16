@@ -12,6 +12,7 @@ import torch
 import torch.backends.cudnn
 import torch.utils.data
 import torchvision.utils
+from shutil import copyfile
 
 import utils.data_loaders
 import utils.data_transforms
@@ -99,6 +100,8 @@ def train_net(cfg):
     ckpt_dir = output_dir % 'checkpoints'
     train_writer = SummaryWriter(os.path.join(log_dir, 'train'))
     val_writer = SummaryWriter(os.path.join(log_dir, 'test'))
+
+    copyfile(cfg.DIR.CONFIG_PATH, os.path.join(cfg.DIR.OUT_PATH, 'config-backup.py'))
 
     # Training loop
     for epoch_idx in range(init_epoch, cfg.TRAIN.NUM_EPOCHES):

@@ -35,23 +35,24 @@ __C.DATASET.CLASS                           = 'chair'
 # Common
 #
 __C.CONST                                   = edict()
-__C.CONST.DEVICE                            = [0]
-__C.CONST.DEVICE_NUM                        = 1
+__C.CONST.DEVICE                            = [0, 1]
+__C.CONST.DEVICE_NUM                        = 2
 __C.CONST.RNG_SEED                          = 0
-__C.CONST.IMG_W                             = 64       # Image width for input
-__C.CONST.IMG_H                             = 64       # Image height for input
-__C.CONST.BATCH_SIZE                        = 4
+__C.CONST.IMG_W                             = 224       # Image width for input
+__C.CONST.IMG_H                             = 224       # Image height for input
+__C.CONST.BATCH_SIZE                        = 1
 __C.CONST.CROP_IMG_W                        = 200       # Dummy property for Pascal 3D
 __C.CONST.CROP_IMG_H                        = 200       # Dummy property for Pascal 3D
 __C.CONST.BIN_SIZE                          = 15
 __C.CONST.NUM_POINTS                        = 2048
-__C.CONST.WEIGHTS                           = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/output_xy_plane_init/checkpoints/best-reconstruction-ckpt.pth'
+__C.CONST.WEIGHTS                           = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/output_results/output_xy_plane_init/checkpoints/best-reconstruction-ckpt.pth'
 
 #
 # Directories
 #
 __C.DIR                                     = edict()
 __C.DIR.OUT_PATH                            = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/output'
+__C.DIR.CONFIG_PATH                         = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/config.py'
 __C.DIR.RANDOM_BG_PATH                      = '/home/hzxie/Datasets/SUN2012/JPEGImages'
 
 #
@@ -73,10 +74,10 @@ __C.GRAPHX.NUM_INIT_POINTS                 = 2048
 # 2d supervision
 #
 __C.SUPERVISION_2D                         = edict()
-__C.SUPERVISION_2D.LOSS_TYPE               = 'bce_prob'
+__C.SUPERVISION_2D.LOSS_TYPE               = 'l2_sq'
 __C.SUPERVISION_2D.USE_AFFINITY            = False
 __C.SUPERVISION_2D.USE_2D_LOSS             = True
-__C.SUPERVISION_2D.LAMDA_2D_LOSS           = 10.
+__C.SUPERVISION_2D.LAMDA_2D_LOSS           = 1e-2
 
 #
 # 3d supervision
@@ -96,10 +97,10 @@ __C.EDGE_LOSS.LAMDA_EDGE_LOSS              = 5e-1
 # Continuous Projection
 #
 __C.PROJECTION                             = edict()
-__C.PROJECTION.GRID_H                      = 128
-__C.PROJECTION.GRID_W                      = 128
-__C.PROJECTION.SIGMA_SQ                    = 0.5
-__C.PROJECTION.NUM_VIEWS                   = 4
+__C.PROJECTION.GRID_H                      = 224
+__C.PROJECTION.GRID_W                      = 224
+__C.PROJECTION.SIGMA_SQ                    = 4.9
+__C.PROJECTION.NUM_VIEWS                   = 1
 # __C.PROJECTION.NUM_VIEWS                   = 1 # only for test time optimization
 __C.PROJECTION.LAMDA_BCE                   = 1.
 __C.PROJECTION.LAMDA_AFF_FWD               = 1.
@@ -111,11 +112,11 @@ __C.PROJECTION.LAMDA_AFF_BWD               = 1.
 __C.TRAIN                                   = edict()
 __C.TRAIN.RESUME_TRAIN                      = True
 __C.TRAIN.NUM_WORKER                        = 4             # number of data workers
-__C.TRAIN.NUM_EPOCHES                       = 1000
+__C.TRAIN.NUM_EPOCHES                       = 700
 
 # __C.TRAIN.VIEW_ESTIMATOR_LEARNING_RATE      = 5e-4
-__C.TRAIN.MILESTONES                        = [400]
-__C.TRAIN.VIEW_ESTIMATOR_LR_MILESTONES      = [400]
+__C.TRAIN.MILESTONES                        = [100]
+__C.TRAIN.VIEW_ESTIMATOR_LR_MILESTONES      = [100]
 
 # train parameters for graphx
 __C.TRAIN.GRAPHX_LEARNING_RATE              = 5e-5
