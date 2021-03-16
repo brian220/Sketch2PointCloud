@@ -77,7 +77,7 @@ __C.SUPERVISION_2D                         = edict()
 __C.SUPERVISION_2D.LOSS_TYPE               = 'l2_sq'
 __C.SUPERVISION_2D.USE_AFFINITY            = False
 __C.SUPERVISION_2D.USE_2D_LOSS             = True
-__C.SUPERVISION_2D.LAMDA_2D_LOSS           = 1e-2
+__C.SUPERVISION_2D.LAMDA_2D_LOSS           = 0.
 
 #
 # 3d supervision
