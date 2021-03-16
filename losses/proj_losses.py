@@ -17,16 +17,17 @@ class ProjectLoss(torch.nn.Module):
         self.grid_w = cfg.PROJECTION.GRID_W
     
     def forward(self, preds, gts, grid_dist_tensor):
-        """
         loss, fwd, bwd = self.get_loss_proj(preds, gts, 
                                             loss_type=self.cfg.SUPERVISION_2D.LOSS_TYPE,  w=1.0, min_dist_loss=self.cfg.SUPERVISION_2D.USE_AFFINITY, dist_mat=grid_dist_tensor, args=None, 
                                             grid_h=self.grid_h, grid_w=self.grid_w)
-        return loss, fwd, bwd"""
-        
+        return loss, fwd, bwd
+        """
         loss = self.get_loss_proj(preds, gts, 
                                   loss_type=self.cfg.SUPERVISION_2D.LOSS_TYPE,  w=1.0, min_dist_loss=self.cfg.SUPERVISION_2D.USE_AFFINITY, dist_mat=grid_dist_tensor, args=None, 
                                   grid_h=self.grid_h, grid_w=self.grid_w)
+
         return loss
+        """
 
     def get_loss_proj(self, pred, gt, loss_type='bce', w=1., min_dist_loss=False,
                       dist_mat=None, args=None, grid_h=64, grid_w=64):
@@ -82,8 +83,8 @@ class ProjectLoss(torch.nn.Module):
             min_dist = torch.amin(dist_masked, dim=(3,4))
             min_dist_inv = torch.amin(dist_masked_inv, dim=(3,4))
     
-        # return loss, min_dist, min_dist_inv
-        return loss
+        return loss, min_dist, min_dist_inv
+        # return loss
     
 
 def grid_dist(grid_h, grid_w):
