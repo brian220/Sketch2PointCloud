@@ -76,8 +76,8 @@ __C.GRAPHX.NUM_INIT_POINTS                 = 2048
 __C.SUPERVISION_2D                         = edict()
 __C.SUPERVISION_2D.LOSS_TYPE               = 'l2_sq'
 __C.SUPERVISION_2D.USE_AFFINITY            = False
-__C.SUPERVISION_2D.USE_2D_LOSS             = False
-__C.SUPERVISION_2D.LAMDA_2D_LOSS           = 0.
+__C.SUPERVISION_2D.USE_2D_LOSS             = True
+__C.SUPERVISION_2D.LAMDA_2D_LOSS           = 0.1
 
 #
 # 3d supervision
@@ -112,7 +112,7 @@ __C.PROJECTION.LAMDA_AFF_BWD               = 1.
 __C.TRAIN                                   = edict()
 __C.TRAIN.RESUME_TRAIN                      = True
 __C.TRAIN.NUM_WORKER                        = 4             # number of data workers
-__C.TRAIN.NUM_EPOCHES                       = 700
+__C.TRAIN.NUM_EPOCHES                       = 800
 
 # __C.TRAIN.VIEW_ESTIMATOR_LEARNING_RATE      = 5e-4
 __C.TRAIN.MILESTONES                        = [100]
