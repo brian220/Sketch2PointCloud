@@ -150,10 +150,10 @@ __C.TEST.RESULT_PATH                        = '/media/caig/FECA2C89CA2C406F/sket
 #
 __C.EVALUATE                                = edict()
 __C.EVALUATE.TAXONOMY_ID                    = '03001627'
-__C.EVALUATE.INPUT_IMAGE_FOLDER             = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_xy_plane_init/evaluate_input_img'
-__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_xy_plane_init/evaluate_output'
-__C.EVALUATE.INFO_FILE                      = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_xy_plane_init/eval_chair.txt'
-__C.EVALUATE.RECONSTRUCTION_WEIGHTS         = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/output_xy_plane_init/checkpoints/ckpt-epoch-0400.pth'
+__C.EVALUATE.INPUT_IMAGE_FOLDER             = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/compare_result_3_18_senior_meeting/baseline/evaluate/evaluate_input_img'
+__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/compare_result_3_18_senior_meeting/baseline/evaluate/evaluate_output'
+__C.EVALUATE.INFO_FILE                      = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/compare_result_3_18_senior_meeting/baseline/evaluate/eval_chair.txt'
+__C.EVALUATE.RECONSTRUCTION_WEIGHTS         = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/compare_result_3_18_senior_meeting/baseline/checkpoint/best-reconstruction-ckpt.pth'
 
 __C.EVALUATE.VIEW_ENCODER_WEIGHTS           = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/output_v3/checkpoints/best-reconstruction-ckpt.pth'
 __C.EVALUATE.VIEW_ESTIMATION_WEIGHTS        = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/output_v3/checkpoints/best-view-ckpt.pth'
