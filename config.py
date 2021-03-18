@@ -14,9 +14,8 @@ __C.DATASETS                                = edict()
 __C.DATASETS.SHAPENET                       = edict()
 __C.DATASETS.SHAPENET.TAXONOMY_FILE_PATH    = './datasets/rec.json'
 
-__C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_sketch/%s/%s/render_%d.png'
+__C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/ShapeNetRendering_copy/'
 __C.DATASETS.SHAPENET.DEPTH_PATH            = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_sketch/%s/%s/depth_%d.png'
-# __C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_pointclouds/%s/%s/pointcloud_2048.npy'
 __C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/shape_net_core_uniform_samples_2048/%s/%s.ply'
 __C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_sketch/%s/%s/view.txt'
 
@@ -24,7 +23,8 @@ __C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/FECA2C89CA2C406F/sket
 # Dataset
 #
 __C.DATASET                                 = edict()
-__C.DATASET.TOTAL_VIEWS                     = 10
+__C.DATASET.RENDER_VIEWS                    = 24
+__C.DATASET.DEPTH_VIEWS                     = 10
 __C.DATASET.MEAN                            = [0.5, 0.5, 0.5]
 __C.DATASET.STD                             = [0.5, 0.5, 0.5]
 __C.DATASET.TRAIN_DATASET                   = 'ShapeNet'
@@ -35,14 +35,14 @@ __C.DATASET.CLASS                           = 'chair'
 # Common
 #
 __C.CONST                                   = edict()
-__C.CONST.DEVICE                            = [0, 1]
-__C.CONST.DEVICE_NUM                        = 2
+__C.CONST.DEVICE                            = [0]
+__C.CONST.DEVICE_NUM                        = 1
 __C.CONST.RNG_SEED                          = 0
 __C.CONST.IMG_W                             = 224       # Image width for input
 __C.CONST.IMG_H                             = 224       # Image height for input
 __C.CONST.BATCH_SIZE                        = 1
-__C.CONST.CROP_IMG_W                        = 200       # Dummy property for Pascal 3D
-__C.CONST.CROP_IMG_H                        = 200       # Dummy property for Pascal 3D
+__C.CONST.CROP_IMG_W                        = 128       # Dummy property for Pascal 3D
+__C.CONST.CROP_IMG_H                        = 128       # Dummy property for Pascal 3D
 __C.CONST.BIN_SIZE                          = 15
 __C.CONST.NUM_POINTS                        = 2048
 __C.CONST.WEIGHTS                           = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/output_results/output_xy_plane_init/checkpoints/best-reconstruction-ckpt.pth'
@@ -76,7 +76,7 @@ __C.GRAPHX.NUM_INIT_POINTS                 = 2048
 __C.SUPERVISION_2D                         = edict()
 __C.SUPERVISION_2D.LOSS_TYPE               = 'l2_sq'
 __C.SUPERVISION_2D.USE_AFFINITY            = False
-__C.SUPERVISION_2D.USE_2D_LOSS             = True
+__C.SUPERVISION_2D.USE_2D_LOSS             = False
 __C.SUPERVISION_2D.LAMDA_2D_LOSS           = 0.1
 
 #
@@ -110,13 +110,15 @@ __C.PROJECTION.LAMDA_AFF_BWD               = 1.
 # Training
 #
 __C.TRAIN                                   = edict()
-__C.TRAIN.RESUME_TRAIN                      = True
+__C.TRAIN.RESUME_TRAIN                      = False
 __C.TRAIN.NUM_WORKER                        = 4             # number of data workers
-__C.TRAIN.NUM_EPOCHES                       = 800
-
-# __C.TRAIN.VIEW_ESTIMATOR_LEARNING_RATE      = 5e-4
-__C.TRAIN.MILESTONES                        = [100]
-__C.TRAIN.VIEW_ESTIMATOR_LR_MILESTONES      = [100]
+__C.TRAIN.NUM_EPOCHES                       = 1000
+__C.TRAIN.BRIGHTNESS                        = .4
+__C.TRAIN.CONTRAST                          = .4
+__C.TRAIN.SATURATION                        = .4
+__C.TRAIN.NOISE_STD                         = .1
+__C.TRAIN.RANDOM_BG_COLOR_RANGE             = [[225, 255], [225, 255], [225, 255]]
+__C.TRAIN.POLICY                            = 'adam'        # available options: sgd, adam
 
 # train parameters for graphx
 __C.TRAIN.GRAPHX_LEARNING_RATE              = 5e-5
@@ -127,6 +129,9 @@ __C.TRAIN.PSGN_FC_LEARNING_RATE             = 5e-5
 __C.TRAIN.PSGN_FC_CONV_WEIGHT_DECAY         = 1e-5
 __C.TRAIN.PSGN_FC_FC_WEIGHT_DECAY           = 1e-3
 
+# __C.TRAIN.VIEW_ESTIMATOR_LEARNING_RATE      = 5e-4
+__C.TRAIN.MILESTONES                        = [400]
+__C.TRAIN.VIEW_ESTIMATOR_LR_MILESTONES      = [400]
 __C.TRAIN.BETAS                             = (.9, .999)
 __C.TRAIN.MOMENTUM                          = .9
 __C.TRAIN.GAMMA                             = .3
