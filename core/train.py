@@ -38,7 +38,6 @@ def train_net(cfg):
     CROP_SIZE = cfg.CONST.CROP_IMG_H, cfg.CONST.CROP_IMG_W
 
     train_transforms = utils.data_transforms.Compose([
-        utils.data_transforms.RandomCrop(IMG_SIZE, CROP_SIZE),
         utils.data_transforms.RandomBackground(cfg.TRAIN.RANDOM_BG_COLOR_RANGE),
         utils.data_transforms.ColorJitter(cfg.TRAIN.BRIGHTNESS, cfg.TRAIN.CONTRAST, cfg.TRAIN.SATURATION),
         utils.data_transforms.RandomNoise(cfg.TRAIN.NOISE_STD),
@@ -46,7 +45,6 @@ def train_net(cfg):
         utils.data_transforms.ToTensor(),
     ])
     val_transforms = utils.data_transforms.Compose([
-        utils.data_transforms.CenterCrop(IMG_SIZE, CROP_SIZE),
         utils.data_transforms.RandomBackground(cfg.TEST.RANDOM_BG_COLOR_RANGE),
         utils.data_transforms.Normalize(mean=cfg.DATASET.MEAN, std=cfg.DATASET.STD),
         utils.data_transforms.ToTensor(),
