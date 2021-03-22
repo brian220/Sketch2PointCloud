@@ -39,7 +39,9 @@ class Projector(torch.nn.Module):
         pcl_out_persp = self.perspective_transform(pcl_out_rot, batch_size=batch_size)
 
         # 3D to 2D Projection
-        proj_pred = self.cont_proj(pcl_out_persp, grid_h=self.grid_h, grid_w=self.grid_w, sigma_sq=self.sigma_sq)
+        # proj_pred = self.cont_proj(pcl_out_persp, grid_h=self.grid_h, grid_w=self.grid_w, sigma_sq=self.sigma_sq)
+        
+        proj_pred = self.disc_proj(pcl_out_persp, grid_h=self.grid_h, grid_w=self.grid_w)
 
         return proj_pred
 
@@ -76,7 +78,37 @@ class Projector(torch.nn.Module):
         grid_val = torch.tanh(grid_val)
     
         return grid_val
+    
 
+    def disc_proj(self, pcl, grid_h, grid_w):
+        '''
+        Discrete Orthographic projection of point cloud
+        to obtain Silhouette 
+        Handles only batch size 1 for now
+        args:
+            pcl: float, (N_batch,N_Pts,3); input point cloud
+                     values assumed to be in (-1,1)
+            grid_h, grid_w: int, ();
+                     output depth map height and width
+        returns:
+            grid_val: float, (N_batch,H,W); output silhouette
+        '''
+        x, y, z = pcl.chunk(3, dim=2) # divide to three parts
+        pcl_norm = torch.cat([x, y, z], dim=2)
+        pcl_xy = torch.cat([x,y], dim=2)
+
+        xy_indices = pcl_xy.to(torch.int64)[0]
+
+        xy_values = torch.ones_like(xy_indices)
+
+        xy_shape = torch.zeros((grid_h, grid_w), dtype=xy_values.dtype)
+        xy_shape = utils.network_utils.var_or_cuda(xy_shape)
+        
+        xy_shape[xy_indices[:,0], xy_indices[:,1]] = 1.
+        out_grid = torch.unsqueeze(xy_shape, 0)
+         
+        return out_grid
+    
 
     def apply_kernel(self, x, sigma_sq=0.5):
         '''
