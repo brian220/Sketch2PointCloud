@@ -21,6 +21,7 @@ from config import cfg
 from core.train import train_net
 from core.test import test_net
 from core.evaluate import evaluate_net
+from core.test_opt import test_opt_net
 # from core.evaluate_graphx import evaluate_net
 # from core.evaluate_graphx_fixed_view import evaluate_fixed_view_net
 # from core.evaluate_hand_draw import evaluate_hand_draw_net
@@ -44,6 +45,7 @@ def get_args_from_command_line():
                         help='name of the net',
                         default=cfg.CONST.BATCH_SIZE,
                         type=int)
+    parser.add_argument('--test_opt', dest='test_opt', help='Test time optimization', action='store_true')
     parser.add_argument('--epoch', dest='epoch', help='number of epoches', default=cfg.TRAIN.NUM_EPOCHES, type=int)
     parser.add_argument('--out', dest='out_path', help='Set output path', default=cfg.DIR.OUT_PATH)
     args = parser.parse_args()
@@ -80,6 +82,8 @@ def main():
         test_net(cfg)
     elif args.evaluate:
         evaluate_net(cfg)
+    elif args.test_opt:
+        test_opt_net(cfg)
     else:
         print("Please specify the arguments (--train, --test, --evaluate)")
     """

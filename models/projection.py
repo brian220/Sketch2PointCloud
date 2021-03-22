@@ -105,8 +105,8 @@ class Projector(torch.nn.Module):
                 xyz_out: float, (BS,N_PTS,3); perspective transformed point cloud 
         '''
         K = np.array([
-                [120., 0., -32.],
-                [0., 120., -32.],
+                [420., 0., -112.],
+                [0., 420., -112.],
                 [0., 0., 1.]]).astype(np.float32)
         K = np.expand_dims(K, 0)
         K = np.tile(K, [batch_size,1,1])

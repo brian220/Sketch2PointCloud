@@ -12,6 +12,7 @@ import torch
 import torch.backends.cudnn
 import torch.utils.data
 import torchvision.utils
+from shutil import copyfile
 
 import utils.data_loaders
 import utils.data_transforms
@@ -32,10 +33,22 @@ def train_net(cfg):
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
     torch.backends.cudnn.benchmark = True
 
+    # Set up data augmentation
+    IMG_SIZE = cfg.CONST.IMG_H, cfg.CONST.IMG_W
+    CROP_SIZE = cfg.CONST.CROP_IMG_H, cfg.CONST.CROP_IMG_W
+
     train_transforms = utils.data_transforms.Compose([
+        # utils.data_transforms.RandomCrop(IMG_SIZE, CROP_SIZE),
+        utils.data_transforms.RandomBackground(cfg.TRAIN.RANDOM_BG_COLOR_RANGE),
+        utils.data_transforms.ColorJitter(cfg.TRAIN.BRIGHTNESS, cfg.TRAIN.CONTRAST, cfg.TRAIN.SATURATION),
+        utils.data_transforms.RandomNoise(cfg.TRAIN.NOISE_STD),
+        utils.data_transforms.Normalize(mean=cfg.DATASET.MEAN, std=cfg.DATASET.STD),
         utils.data_transforms.ToTensor(),
     ])
     val_transforms = utils.data_transforms.Compose([
+        # utils.data_transforms.CenterCrop(IMG_SIZE, CROP_SIZE),
+        utils.data_transforms.RandomBackground(cfg.TEST.RANDOM_BG_COLOR_RANGE),
+        utils.data_transforms.Normalize(mean=cfg.DATASET.MEAN, std=cfg.DATASET.STD),
         utils.data_transforms.ToTensor(),
     ])
 
@@ -61,7 +74,7 @@ def train_net(cfg):
     # The parameters here need to be set in cfg
     if cfg.NETWORK.REC_MODEL == 'GRAPHX':
         net = Pixel2Pointcloud_GRAPHX(cfg=cfg,
-                                      in_channels=1, 
+                                      in_channels=3, 
                                       in_instances=cfg.GRAPHX.NUM_INIT_POINTS,
                                       optimizer=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.GRAPHX_LEARNING_RATE, weight_decay=cfg.TRAIN.GRAPHX_WEIGHT_DECAY),
                                       scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
@@ -81,7 +94,7 @@ def train_net(cfg):
     # best_emd =  10000 # less is better
     best_loss = 100000
     best_epoch = -1
-    """
+    
     if 'WEIGHTS' in cfg.CONST and cfg.TRAIN.RESUME_TRAIN:
         print('[INFO] %s Recovering from %s ...' % (dt.now(), cfg.CONST.WEIGHTS))
         checkpoint = torch.load(cfg.CONST.WEIGHTS)
@@ -91,7 +104,7 @@ def train_net(cfg):
 
         print('[INFO] %s Recover complete. Current epoch #%d at epoch #%d.' %
               (dt.now(), init_epoch, cfg.TRAIN.NUM_EPOCHES))
-    """
+    
 
     # Summary writer for TensorBoard
     output_dir = os.path.join(cfg.DIR.OUT_PATH, '%s')
@@ -99,6 +112,8 @@ def train_net(cfg):
     ckpt_dir = output_dir % 'checkpoints'
     train_writer = SummaryWriter(os.path.join(log_dir, 'train'))
     val_writer = SummaryWriter(os.path.join(log_dir, 'test'))
+
+    copyfile(cfg.DIR.CONFIG_PATH, os.path.join(cfg.DIR.OUT_PATH, 'config-backup.py'))
 
     # Training loop
     for epoch_idx in range(init_epoch, cfg.TRAIN.NUM_EPOCHES):

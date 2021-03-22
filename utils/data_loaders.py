@@ -34,8 +34,8 @@ def init_pointcloud_loader(num_points):
     Z = np.random.rand(num_points) + 1.
     h = np.random.uniform(10., 214., size=(num_points,))
     w = np.random.uniform(10., 214., size=(num_points,))
-    X = (w - 111.5) / 60. * -Z # focal length: 60
-    Y = (h - 111.5) / 60. * Z
+    X = (w - 111.5) / 248. * -Z # focal length: 60
+    Y = (h - 111.5) / 248. * Z
     X = np.reshape(X, (-1, 1))
     Y = np.reshape(Y, (-1, 1))
     Z = np.reshape(Z, (-1, 1))
@@ -117,23 +117,14 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         else:
         # test, valid with the first image
             selected_rendering_image_path = rendering_image_paths[1]
-        
+
         # read the test, train image
+        # print(selected_rendering_image_path)
         rendering_images = []
-        rendering_image = cv2.imread(selected_rendering_image_path, cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255.
+        rendering_image = cv2.imread(selected_rendering_image_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.
+        rendering_image = cv2.cvtColor(rendering_image, cv2.COLOR_GRAY2RGB)
 
-        if self.rec_model == 'PSGN_FC':
-            rendering_image = cv2.resize(rendering_image, (self.grid_h, self.grid_w))
-        elif self.rec_model == 'GRAPHX':
-            rendering_image = cv2.resize(rendering_image, (224, 224))
-        else:
-            print('Invalid model name, please check the config.py (NET_WORK.REC_MODEL)')
-            sys.exit(2)
-        
-        # rendering_image = cv2.cvtColor(rendering_image, cv2.COLOR_BGR2RGB)
-        rendering_image = np.expand_dims(rendering_image, -1)
-
-        if len(rendering_image.shape) < 1:
+        if len(rendering_image.shape) < 3:
             print('[FATAL] %s It seems that there is something wrong with the image file %s' %
                      (dt.now(), image_path))
             sys.exit(2)
@@ -200,7 +191,8 @@ class ShapeNetDataLoader:
         self.view_path_template = cfg.DATASETS.SHAPENET.VIEW_PATH
 
         self.class_name = cfg.DATASET.CLASS
-        self.total_views = cfg.DATASET.TOTAL_VIEWS
+        self.render_views = cfg.DATASET.RENDER_VIEWS
+        self.depth_views = cfg.DATASET.DEPTH_VIEWS
         self.init_num_points = cfg.GRAPHX.NUM_INIT_POINTS
         self.proj_num_views = cfg.PROJECTION.NUM_VIEWS
         self.grid_h = cfg.PROJECTION.GRID_H 
@@ -235,15 +227,23 @@ class ShapeNetDataLoader:
     def get_files_of_taxonomy(self, taxonomy_folder_name, samples):
         files_of_taxonomy = []
         for sample_idx, sample_name in enumerate(samples):
+            # check samples
+            sample_path = self.rendering_image_path_template % (taxonomy_folder_name, sample_name, 0)
+            sample_folder = os.path.dirname(sample_path)
+            if not os.path.exists(sample_folder):
+                print('[WARN] %s Ignore sample %s/%s since sample file not exists.' %
+                      (dt.now(), taxonomy_folder_name, sample_name))
+                continue
+
             # Get file paths of pointcloud
             point_cloud_file_path = self.point_cloud_path_template % (taxonomy_folder_name, sample_name)
             if not os.path.exists(point_cloud_file_path):
                 print('[WARN] %s Ignore sample %s/%s since point cloud file not exists.' %
                       (dt.now(), taxonomy_folder_name, sample_name))
                 continue
-            
+
             # Get file paths of rendering images
-            rendering_image_indexes = range(self.total_views)
+            rendering_image_indexes = range(self.render_views)
             rendering_image_file_paths = []
             for image_idx in rendering_image_indexes:
                 img_file_path = self.rendering_image_path_template % (taxonomy_folder_name, sample_name, image_idx)
@@ -257,7 +257,7 @@ class ShapeNetDataLoader:
                 continue
 
             # Get file list of depth images
-            depth_image_indexes = range(self.total_views)
+            depth_image_indexes = range(self.depth_views)
             depth_image_file_paths = []
             for image_idx in depth_image_indexes:
                 depth_image_file_path = self.depth_image_path_template % (taxonomy_folder_name, sample_name, image_idx)
