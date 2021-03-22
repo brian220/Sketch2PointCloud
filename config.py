@@ -75,6 +75,7 @@ __C.GRAPHX.NUM_INIT_POINTS                 = 2048
 #
 __C.SUPERVISION_2D                         = edict()
 __C.SUPERVISION_2D.LOSS_TYPE               = 'l2_sq'
+__C.SUPERVISION_2D.PROJ_TYPE               = 'CONT' #CONT: continuous projection, DISC: discrete projection      
 __C.SUPERVISION_2D.USE_AFFINITY            = False
 __C.SUPERVISION_2D.USE_2D_LOSS             = False
 __C.SUPERVISION_2D.LAMDA_2D_LOSS           = 0.1
@@ -85,13 +86,6 @@ __C.SUPERVISION_2D.LAMDA_2D_LOSS           = 0.1
 __C.SUPERVISION_3D                         = edict()
 __C.SUPERVISION_3D.USE_3D_LOSS             = True
 __C.SUPERVISION_3D.LAMDA_3D_LOSS           = 1.
-
-#
-# Edge loss
-# 
-__C.EDGE_LOSS                              = edict()
-__C.EDGE_LOSS.USE_EDGE_LOSS                = False
-__C.EDGE_LOSS.LAMDA_EDGE_LOSS              = 5e-1
 
 #
 # Continuous Projection

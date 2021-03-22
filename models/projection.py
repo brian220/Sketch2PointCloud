@@ -24,6 +24,7 @@ class Projector(torch.nn.Module):
     def __init__(self, cfg):
         super(Projector, self).__init__()
         # self.batch_size = cfg.CONST.BATCH_SIZE
+        self.cfg = cfg
         self.n_pts = cfg.CONST.NUM_POINTS
         self.grid_h = cfg.PROJECTION.GRID_H
         self.grid_w = cfg.PROJECTION.GRID_W
@@ -38,10 +39,10 @@ class Projector(torch.nn.Module):
         # Perspective transform
         pcl_out_persp = self.perspective_transform(pcl_out_rot, batch_size=batch_size)
 
-        # 3D to 2D Projection
-        # proj_pred = self.cont_proj(pcl_out_persp, grid_h=self.grid_h, grid_w=self.grid_w, sigma_sq=self.sigma_sq)
-        
-        proj_pred = self.disc_proj(pcl_out_persp, grid_h=self.grid_h, grid_w=self.grid_w)
+        if self.cfg.SUPERVISION_2D.PROJ_TYPE = "CONT":
+            proj_pred = self.cont_proj(pcl_out_persp, grid_h=self.grid_h, grid_w=self.grid_w, sigma_sq=self.sigma_sq)
+        else:
+            proj_pred = self.disc_proj(pcl_out_persp, grid_h=self.grid_h, grid_w=self.grid_w)
 
         return proj_pred
 
