@@ -28,8 +28,8 @@ class Projector(torch.nn.Module):
         self.n_pts = cfg.CONST.NUM_POINTS
         self.grid_h = cfg.PROJECTION.GRID_H
         self.grid_w = cfg.PROJECTION.GRID_W
-        self.sigma_sq = cfg.PROJECTION.SIGMA_SQ
-
+        self.sigma_sq_cont = cfg.PROJECTION.SIGMA_SQ_CONT
+        self.sigma_sq_disc = cfg.PROJECTION.SIGMA_SQ_DISC
 
     def forward(self, xyz, az, el):
         # World co-ordinates to camera co-ordinates
@@ -37,12 +37,12 @@ class Projector(torch.nn.Module):
         pcl_out_rot = self.world2cam(xyz, az, el, batch_size=batch_size, N_PTS=self.n_pts)
 
         # Perspective transform
-        pcl_out_persp = self.perspective_transform(pcl_out_rot, batch_size=batch_size)
+        pcl_out_persp = self.perspective_transform(pcl_out_rot, batch_size=batch_size, grid_h=self.grid_h, grid_w=self.grid_w)
 
         if self.cfg.SUPERVISION_2D.PROJ_TYPE == "CONT":
-            proj_pred = self.cont_proj(pcl_out_persp, grid_h=self.grid_h, grid_w=self.grid_w, sigma_sq=self.sigma_sq)
+            proj_pred = self.cont_proj(pcl_out_persp, grid_h=self.grid_h, grid_w=self.grid_w, sigma_sq=self.sigma_sq_cont)
         elif self.cfg.SUPERVISION_2D.PROJ_TYPE == "DISC":
-            proj_pred = self.disc_proj(pcl_out_persp, grid_h=self.grid_h, grid_w=self.grid_w)
+            proj_pred = self.cont_proj(pcl_out_persp, grid_h=self.grid_h, grid_w=self.grid_w, sigma_sq=self.sigma_sq_disc)
 
         return proj_pred
 
@@ -79,11 +79,6 @@ class Projector(torch.nn.Module):
         grid_val = torch.tanh(grid_val)
     
         return grid_val
-    
-    
-    def disc_proj(self, pcl, grid_h, grid_w):
-        out_grid = self.cont_proj(pcl, grid_h, grid_w, sigma_sq=0.5)
-        return out_grid
     
     """
     def disc_proj(self, pcl, grid_h, grid_w):
@@ -139,7 +134,7 @@ class Projector(torch.nn.Module):
         return out
     
     
-    def perspective_transform(self, xyz, batch_size):
+    def perspective_transform(self, xyz, batch_size, grid_h, grid_w):
         '''
         Perspective transform of pcl; Intrinsic camera parameters are assumed to be
         known (here, obtained using parameters of GT image renderer, i.e. Blender)
@@ -151,10 +146,16 @@ class Projector(torch.nn.Module):
         returns:
                 xyz_out: float, (BS,N_PTS,3); perspective transformed point cloud 
         '''
+        alpha_u = 60. * float(grid_h)/32.
+        alpha_v = 60. * float(grid_w)/32.
+        u_0 = float(grid_h)/2.
+        v_0 = float(grid_w)/2.
+    
         K = np.array([
-                [420., 0., -112.],
-                [0., 420., -112.],
-                [0., 0., 1.]]).astype(np.float32)
+                [alpha_u, 0., -u_0],
+                [0., alpha_v, -v_0],
+                [0.,      0.,   1.]]).astype(np.float32)
+                
         K = np.expand_dims(K, 0)
         K = np.tile(K, [batch_size,1,1])
         K = torch.from_numpy(K)

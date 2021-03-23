@@ -79,21 +79,22 @@ def valid_net(cfg,
                     os.makedirs(proj_dir)
 
                 if cfg.SUPERVISION_2D.USE_2D_LOSS and cfg.SUPERVISION_2D.PROJ_TYPE == 'DISC':
-                    # save projection prediction
-                    proj_pred_np = proj_pred[0][0].detach().cpu().numpy()
-                    save_path = os.path.join(proj_dir, 'proj%d-%06d %s.png' % (sample_idx, epoch_idx, "proj_pred"))
-                    sc.imsave(save_path, proj_pred_np)
-    
-                    # save point gt
-                    point_gt_np = point_gt[0][0].detach().cpu().numpy()
-                    save_path = os.path.join(proj_dir, 'proj%d-%06d %s.png' % (sample_idx, epoch_idx, "point_gt"))
-                    sc.imsave(save_path, point_gt_np)
-    
                     # save gt
                     gt_np = proj_gt[0][0].detach().cpu().numpy()
                     save_path = os.path.join(proj_dir, 'proj_gt%d-%06d %s.png' % (sample_idx, epoch_idx, "proj_gt"))
                     sc.imsave(save_path, gt_np)
 
+                    # save point gt
+                    point_gt_np = point_gt[0][0].detach().cpu().numpy()
+                    save_path = os.path.join(proj_dir, 'proj%d-%06d %s.png' % (sample_idx, epoch_idx, "point_gt"))
+                    sc.imsave(save_path, point_gt_np)
+
+                elif cfg.SUPERVISION_2D.USE_2D_LOSS:
+                    # save projection prediction
+                    proj_pred_np = proj_pred[0][0].detach().cpu().numpy()
+                    save_path = os.path.join(proj_dir, 'proj%d-%06d %s.png' % (sample_idx, epoch_idx, "proj_pred"))
+                    sc.imsave(save_path, proj_pred_np)
+    
                 # Predict Pointcloud
                 g_pc = generated_point_clouds[0].detach().cpu().numpy()
                 rendering_views = utils.point_cloud_visualization.get_point_cloud_image(g_pc, os.path.join(img_dir, 'test'),

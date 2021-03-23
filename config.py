@@ -89,9 +89,10 @@ __C.SUPERVISION_3D.LAMDA_3D_LOSS           = 1.
 # Continuous Projection
 #
 __C.PROJECTION                             = edict()
-__C.PROJECTION.GRID_H                      = 224
-__C.PROJECTION.GRID_W                      = 224
-__C.PROJECTION.SIGMA_SQ                    = 0.5
+__C.PROJECTION.GRID_H                      = 128
+__C.PROJECTION.GRID_W                      = 128
+__C.PROJECTION.SIGMA_SQ_DISC               = 0.5
+__C.PROJECTION.SIGMA_SQ_CONT               = 0.4
 __C.PROJECTION.NUM_VIEWS                   = 1
 # __C.PROJECTION.NUM_VIEWS                   = 1 # only for test time optimization
 __C.PROJECTION.LAMDA_BCE                   = 1.
