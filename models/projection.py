@@ -39,9 +39,9 @@ class Projector(torch.nn.Module):
         # Perspective transform
         pcl_out_persp = self.perspective_transform(pcl_out_rot, batch_size=batch_size)
 
-        if self.cfg.SUPERVISION_2D.PROJ_TYPE = "CONT":
+        if self.cfg.SUPERVISION_2D.PROJ_TYPE == "CONT":
             proj_pred = self.cont_proj(pcl_out_persp, grid_h=self.grid_h, grid_w=self.grid_w, sigma_sq=self.sigma_sq)
-        else:
+        elif self.cfg.SUPERVISION_2D.PROJ_TYPE == "DISC":
             proj_pred = self.disc_proj(pcl_out_persp, grid_h=self.grid_h, grid_w=self.grid_w)
 
         return proj_pred
@@ -62,7 +62,7 @@ class Projector(torch.nn.Module):
         '''
         x, y, z = pcl.chunk(3, dim=2) # divide to three parts
         pcl_norm = torch.cat([x, y, z], dim=2)
-        pcl_xy = torch.cat([x,y], dim=2)
+        pcl_xy = torch.cat([x,y], dim=2) #(BS, N_PTS, 2)
 
         out_grid = torch.meshgrid(torch.arange(0, grid_h), torch.arange(0, grid_w))
         out_grid = [out_grid[0].type(torch.FloatTensor), out_grid[1].type(torch.FloatTensor)]
@@ -71,8 +71,8 @@ class Projector(torch.nn.Module):
         grid_xyz = torch.cat([torch.stack(out_grid, 2), grid_z], dim=2) # (H,W,3)
         grid_xy = torch.stack(out_grid, 2) # (H,W,2)
         grid_xy = utils.network_utils.var_or_cuda(grid_xy)
-        
         grid_diff = torch.unsqueeze(torch.unsqueeze(pcl_xy, 2), 2) - grid_xy # (BS,N_PTS,H,W,2)
+
         grid_val = self.apply_kernel(grid_diff, sigma_sq)  # (BS,N_PTS,H,W,2)
         grid_val = grid_val[:,:,:,:,0]*grid_val[:,:,:,:,1]  # (BS,N_PTS,H,W)
         grid_val = torch.sum(grid_val, dim=1) # (BS,H,W)
@@ -80,7 +80,12 @@ class Projector(torch.nn.Module):
     
         return grid_val
     
-
+    
+    def disc_proj(self, pcl, grid_h, grid_w):
+        out_grid = self.cont_proj(pcl, grid_h, grid_w, sigma_sq=0.5)
+        return out_grid
+    
+    """
     def disc_proj(self, pcl, grid_h, grid_w):
         '''
         Discrete Orthographic projection of point cloud
@@ -98,18 +103,27 @@ class Projector(torch.nn.Module):
         pcl_norm = torch.cat([x, y, z], dim=2)
         pcl_xy = torch.cat([x,y], dim=2)
 
-        xy_indices = pcl_xy.to(torch.int64)[0]
+        2048, 2
+
+        xy_indices = pcl_xy[0].long()
 
         xy_values = torch.ones_like(xy_indices)
+        
+        print(pcl_xy.requires_grad)
+        print(xy_indices.requires_grad)
+        print(xy_values.requires_grad)
 
         xy_shape = torch.zeros((grid_h, grid_w), dtype=xy_values.dtype)
         xy_shape = utils.network_utils.var_or_cuda(xy_shape)
         
-        xy_shape[xy_indices[:,0], xy_indices[:,1]] = 1.
+        # xy_shape[xy_indices[:,0], xy_indices[:,1]] = 1.
+        # out_grid = torch.unsqueeze(xy_shape, 0)
+        out_grid = xy_shape
         out_grid = torch.unsqueeze(xy_shape, 0)
-         
+        print("grad:", out_grid.requires_grad)
+
         return out_grid
-    
+    """
 
     def apply_kernel(self, x, sigma_sq=0.5):
         '''

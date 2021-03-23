@@ -33,10 +33,6 @@ def train_net(cfg):
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
     torch.backends.cudnn.benchmark = True
 
-    # Set up data augmentation
-    IMG_SIZE = cfg.CONST.IMG_H, cfg.CONST.IMG_W
-    CROP_SIZE = cfg.CONST.CROP_IMG_H, cfg.CONST.CROP_IMG_W
-
     train_transforms = utils.data_transforms.Compose([
         utils.data_transforms.RandomBackground(cfg.TRAIN.RANDOM_BG_COLOR_RANGE),
         utils.data_transforms.ColorJitter(cfg.TRAIN.BRIGHTNESS, cfg.TRAIN.CONTRAST, cfg.TRAIN.SATURATION),
@@ -130,7 +126,7 @@ def train_net(cfg):
         batch_end_time = time()
         n_batches = len(train_data_loader)
         for batch_idx, (taxonomy_names, sample_names, rendering_images,
-                        model_gt, edge_gt, model_x, model_y,
+                        model_gt, model_x, model_y,
                         init_point_clouds, ground_truth_point_clouds) in enumerate(train_data_loader):
 
             # Measure data time
@@ -142,13 +138,12 @@ def train_net(cfg):
             # Get data from data loader
             rendering_images = utils.network_utils.var_or_cuda(rendering_images)
             model_gt = utils.network_utils.var_or_cuda(model_gt)
-            edge_gt = utils.network_utils.var_or_cuda(edge_gt)
             model_x = utils.network_utils.var_or_cuda(model_x)
             model_y = utils.network_utils.var_or_cuda(model_y)
             init_point_clouds = utils.network_utils.var_or_cuda(init_point_clouds)
             ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
 
-            total_loss, loss_2d, loss_3d = net.module.learn(rendering_images, init_point_clouds, ground_truth_point_clouds, model_x, model_y, model_gt, edge_gt)
+            total_loss, loss_2d, loss_3d = net.module.learn(rendering_images, init_point_clouds, ground_truth_point_clouds, model_x, model_y, model_gt)
             
             reconstruction_losses.update(total_loss)
             loss_2ds.update(loss_2d)
@@ -167,7 +162,7 @@ def train_net(cfg):
         train_writer.add_scalar('Total/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)
         train_writer.add_scalar('2D/EpochLoss_Loss_2D', loss_2ds.avg, epoch_idx + 1)
         train_writer.add_scalar('3D/EpochLoss_Loss_3D', loss_3ds.avg, epoch_idx + 1)
-
+        
 
         # Validate the training models
         current_loss = valid_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, net)

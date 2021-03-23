@@ -26,27 +26,28 @@ class DatasetType(Enum):
     TRAIN = 0
     TEST = 1
     VAL = 2
-
-
 # //////////////////////////////// = End of DatasetType Class Definition = ///////////////////////////////// #
+
 
 def init_pointcloud_loader(num_points):
     Z = np.random.rand(num_points) + 1.
     h = np.random.uniform(10., 214., size=(num_points,))
     w = np.random.uniform(10., 214., size=(num_points,))
-    X = (w - 111.5) / 60. * -Z # focal length: 60
-    Y = (h - 111.5) / 60. * Z
+    X = (w - 111.5) / 248. * -Z # focal length: 60
+    Y = (h - 111.5) / 248. * Z
     X = np.reshape(X, (-1, 1))
     Y = np.reshape(Y, (-1, 1))
     Z = np.reshape(Z, (-1, 1))
     XYZ = np.concatenate((X, Y, Z), 1)
     return XYZ.astype('float32')
 
+
 def sample_spherical(n_points):
     vec = np.random.rand(n_points, 3) * 2. - 1.
     vec /= np.linalg.norm(vec, axis=1, keepdims=True)
     pc = vec * .3 + np.array([[6.462339e-04,  9.615256e-04, -7.909229e-01]])
     return pc.astype('float32')
+
 
 # xyz is a single pcl
 def np_rotate(xyz, xangle=0, yangle=0, inverse=False):
@@ -74,6 +75,7 @@ def np_rotate(xyz, xangle=0, yangle=0, inverse=False):
 	    rotmat = np.linalg.inv(rotmat)
     return xyz.dot(rotmat)
 
+
 class ShapeNetDataset(torch.utils.data.dataset.Dataset):
     """ShapeNetDataset class used for PyTorch DataLoader"""
     def __init__(self, dataset_type, file_list, init_num_points, proj_num_views, grid_h, grid_w, rec_model, transforms=None):
@@ -91,14 +93,14 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
 
     def __getitem__(self, idx):
         taxonomy_name, sample_name, rendering_images, \
-        model_gt, edge_gt, model_x, model_y, \
+        model_gt, model_x, model_y, \
         init_point_cloud, ground_truth_point_cloud = self.get_datum(idx)
 
         if self.transforms:
             rendering_images = self.transforms(rendering_images)
 
         return (taxonomy_name, sample_name, rendering_images,
-                model_gt, edge_gt, model_x, model_y, 
+                model_gt, model_x, model_y, 
                 init_point_cloud, ground_truth_point_cloud)
 
     def get_datum(self, idx):
@@ -119,9 +121,9 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
             selected_rendering_image_path = rendering_image_paths[1]
 
         # read the test, train image
-        # print(selected_rendering_image_path)
         rendering_images = []
-        rendering_image =  cv2.imread(selected_rendering_image_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.
+        rendering_image = cv2.imread(selected_rendering_image_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.
+        rendering_image = cv2.cvtColor(rendering_image, cv2.COLOR_GRAY2RGB)
 
         if len(rendering_image.shape) < 3:
             print('[FATAL] %s It seems that there is something wrong with the image file %s' %
@@ -131,7 +133,6 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         
         # read the ground truth proj images and views (multi-views)
         model_gt = []
-        edge_gt = []
         model_x = []
         model_y = []
         for idx in range(0, self.proj_num_views):
@@ -142,14 +143,8 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
             ip_proj[ip_proj<254] = 1
             ip_proj[ip_proj>=254] = 0
 
-            # get the gt edge proj by cv2.findContours
-            edge_proj = ip_proj
-            cv2.findContours(edge_proj, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-            edge_proj = edge_proj.astype(np.float32)
             ip_proj = ip_proj.astype(np.float32)
             model_gt.append(ip_proj)
-            edge_gt.append(edge_proj)
 
             # read the views
             model_x.append(radian_x[idx])
@@ -168,15 +163,12 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         # convert to np array
         rendering_images = np.array(rendering_images).astype(np.float32)
         model_gt = np.array(model_gt).astype(np.float32)
-        edge_gt = np.array(edge_gt).astype(np.float32)
         model_x = np.array(model_x).astype(np.float32)
         model_y = np.array(model_y).astype(np.float32)
         
         return (taxonomy_name, sample_name, rendering_images,
-                model_gt, edge_gt, model_x, model_y,
+                model_gt, model_x, model_y,
                 init_pointcloud_loader(self.init_num_points), ground_truth_point_cloud)
-
-
 # //////////////////////////////// = End of ShapeNetDataset Class Definition = ///////////////////////////////// #
 
 
@@ -226,13 +218,21 @@ class ShapeNetDataLoader:
     def get_files_of_taxonomy(self, taxonomy_folder_name, samples):
         files_of_taxonomy = []
         for sample_idx, sample_name in enumerate(samples):
+            # check samples
+            sample_path = self.rendering_image_path_template % (taxonomy_folder_name, sample_name, 0)
+            sample_folder = os.path.dirname(sample_path)
+            if not os.path.exists(sample_folder):
+                print('[WARN] %s Ignore sample %s/%s since sample file not exists.' %
+                      (dt.now(), taxonomy_folder_name, sample_name))
+                continue
+
             # Get file paths of pointcloud
             point_cloud_file_path = self.point_cloud_path_template % (taxonomy_folder_name, sample_name)
             if not os.path.exists(point_cloud_file_path):
                 print('[WARN] %s Ignore sample %s/%s since point cloud file not exists.' %
                       (dt.now(), taxonomy_folder_name, sample_name))
                 continue
-            
+
             # Get file paths of rendering images
             rendering_image_indexes = range(self.render_views)
             rendering_image_file_paths = []
@@ -292,10 +292,6 @@ class ShapeNetDataLoader:
                 'radian_y' : radian_y
             })
 
-            # Report the progress of reading dataset
-            # if sample_idx % 500 == 499 or sample_idx == n_samples - 1:
-            #     print('[INFO] %s Collecting %d of %d' % (dt.now(), sample_idx + 1, n_samples))
-            
         return files_of_taxonomy
 
 

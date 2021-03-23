@@ -81,7 +81,7 @@ def test_net(cfg):
 
     # Testing loop
     for sample_idx, (taxonomy_names, sample_names, rendering_images,
-                    model_gt, edge_gt, model_x, model_y,
+                    model_gt, model_x, model_y,
                     init_point_clouds, ground_truth_point_clouds) in enumerate(test_data_loader):
         with torch.no_grad():
             # Only one image per sample
@@ -90,7 +90,6 @@ def test_net(cfg):
             # Get data from data loader
             input_imgs = utils.network_utils.var_or_cuda(rendering_images)
             model_gt = utils.network_utils.var_or_cuda(model_gt)
-            edge_gt = utils.network_utils.var_or_cuda(edge_gt)
             model_x = utils.network_utils.var_or_cuda(model_x)
             model_y = utils.network_utils.var_or_cuda(model_y)
             init_pc = utils.network_utils.var_or_cuda(init_point_clouds)
@@ -99,7 +98,7 @@ def test_net(cfg):
             #=================================================#
             #           Test the encoder, decoder             #
             #=================================================#
-            total_loss, loss_2d, loss_3d, pred_pc = net.module.loss(input_imgs, init_pc, gt_pc, model_x, model_y, model_gt, edge_gt)
+            total_loss, loss_2d, loss_3d, pred_pc = net.module.loss(input_imgs, init_pc, gt_pc, model_x, model_y, model_gt)
 
             # scale the pred and gt to same size xyz between [-0.5, 0.5] and compute cd, emd
             scaled_pred_pc, scaled_gt_pc = scale(pred_pc, gt_pc)

@@ -63,7 +63,7 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
         pc_feats = self.pc_enc(img_feats, init_pc)
         return self.pc(pc_feats)
 
-    def loss(self, input, init_pc, gt_pc, view_az, view_el, proj_gt, edge_gt):
+    def loss(self, input, init_pc, gt_pc, view_az, view_el, proj_gt):
         pred_pc = self(input, init_pc)
         
         if self.cfg.SUPERVISION_2D.USE_AFFINITY:
@@ -74,6 +74,7 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
 
         # Use 2D projection loss to train
         proj_pred = {}
+        point_gt = {}
         loss_bce = {}
         fwd = {}
         bwd = {}
@@ -88,13 +89,29 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
         if not self.cfg.SUPERVISION_3D.USE_3D_LOSS:
             loss_3d = torch.tensor(loss_3d)
         
-        # for 2d supervision
-        if self.cfg.SUPERVISION_2D.USE_2D_LOSS:
+        # for continous 2d supervision
+        if self.cfg.SUPERVISION_2D.USE_2D_LOSS and self.cfg.SUPERVISION_2D.PROJ_TYPE == 'CONT':
             for idx in range(0, self.cfg.PROJECTION.NUM_VIEWS):
                 proj_pred[idx] = self.projector(pred_pc, view_az[:,idx], view_el[:,idx])
-                loss_bce[idx] = self.proj_loss(preds=proj_pred[idx], gts=proj_gt[:,idx], grid_dist_tensor=grid_dist_tensor)
-                loss_2d += self.cfg.PROJECTION.LAMDA_BCE * torch.mean(loss_bce[idx])
+                loss_bce[idx], fwd[idx], bwd[idx] = self.proj_loss(preds=proj_pred[idx], gts=proj_gt[:,idx], grid_dist_tensor=grid_dist_tensor)
+                loss_fwd[idx] = 1e-4 * torch.mean(fwd[idx])
+                loss_bwd[idx] = 1e-4 * torch.mean(bwd[idx])
+
+                if self.cfg.SUPERVISION_2D.USE_AFFINITY:
+                    loss_2d += self.cfg.PROJECTION.LAMDA_BCE * torch.mean(loss_bce[idx]) +\
+                               self.cfg.PROJECTION.LAMDA_AFF_FWD * loss_fwd[idx] +\
+                               self.cfg.PROJECTION.LAMDA_AFF_BWD * loss_bwd[idx]
+                else:
+                    loss_2d += self.cfg.PROJECTION.LAMDA_BCE * torch.mean(loss_bce[idx])
         
+        # for discrete 2d supervision
+        if self.cfg.SUPERVISION_2D.USE_2D_LOSS and self.cfg.SUPERVISION_2D.PROJ_TYPE == 'DISC':
+            for idx in range(0, self.cfg.PROJECTION.NUM_VIEWS):
+                proj_pred[idx] = self.projector(pred_pc, view_az[:,idx], view_el[:,idx])
+                point_gt[idx] = torch.mul(proj_pred[idx], proj_gt[:,idx])
+                loss_bce[idx], fwd[idx], bwd[idx] = self.proj_loss(preds=proj_pred[idx], gts=point_gt[idx], grid_dist_tensor=grid_dist_tensor)
+                loss_2d += self.cfg.PROJECTION.LAMDA_BCE * torch.mean(loss_bce[idx])
+
         # for 3d supervision (EMD)
         loss_3d = torch.mean(self.emd(pred_pc, gt_pc))
 
@@ -109,12 +126,12 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
         elif self.cfg.SUPERVISION_3D.USE_3D_LOSS:
             total_loss = loss_3d
             
-        return total_loss, (loss_2d/self.cfg.PROJECTION.NUM_VIEWS), loss_3d, pred_pc
+        return total_loss, (loss_2d/self.cfg.PROJECTION.NUM_VIEWS), loss_3d, pred_pc, proj_pred, proj_gt, point_gt
 
-    def learn(self, input, init_pc, gt_pc, view_az, view_el, proj_gt, edge_gt):
+    def learn(self, input, init_pc, gt_pc, view_az, view_el, proj_gt):
         self.train(True)
         self.optimizer.zero_grad()
-        total_loss, loss_2d, loss_3d, _ = self.loss(input, init_pc, gt_pc, view_az, view_el, proj_gt, edge_gt)
+        total_loss, loss_2d, loss_3d, _, _, _, _ = self.loss(input, init_pc, gt_pc, view_az, view_el, proj_gt)
         total_loss.backward()
         self.optimizer.step()
         total_loss_np = total_loss.detach().item()
