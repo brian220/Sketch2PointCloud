@@ -19,7 +19,7 @@ def get_point_cloud_image(generate_point_cloud, save_dir, sample_id, n_itr, img_
             generate_point_cloud[:, 2],
             in_u_sphere=True,
             show=False,
-            title=f"{n_itr} {img_type}",
+            title=f"{img_type}",
             azim=360-view[0],
             elev=view[1]
         )
