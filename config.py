@@ -18,6 +18,7 @@ __C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/FECA2C89CA2C406F/sket
 __C.DATASETS.SHAPENET.DEPTH_PATH            = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_sketch/%s/%s/depth_%d.png'
 __C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/shape_net_core_uniform_samples_2048/%s/%s.ply'
 __C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_sketch/%s/%s/view.txt'
+__C.DATASETS.SHAPENET.HAND_DRAW_IMG_PATH    = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/hand_draw_img'
 
 #
 # Dataset
@@ -40,10 +41,10 @@ __C.CONST.DEVICE_NUM                        = 1
 __C.CONST.RNG_SEED                          = 0
 __C.CONST.IMG_W                             = 224       # Image width for input
 __C.CONST.IMG_H                             = 224       # Image height for input
-__C.CONST.BATCH_SIZE                        = 1
+__C.CONST.BATCH_SIZE                        = 4
 __C.CONST.BIN_SIZE                          = 15
 __C.CONST.NUM_POINTS                        = 2048
-__C.CONST.WEIGHTS                           = '/media/caig/FECA2C89CA2C406F/sketch3D/results/2021_3_21-1/best-reconstruction-ckpt.pth'
+__C.CONST.WEIGHTS                           = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v1/checkpoints/best-reconstruction-ckpt.pth'
 
 #
 # Directories
@@ -69,12 +70,22 @@ __C.GRAPHX.USE_GRAPHX                      = True
 __C.GRAPHX.NUM_INIT_POINTS                 = 2048
 
 #
+# Updater
+#
+__C.UPDATER                               = edict()
+__C.UPDATER.RANGE_MAX                     = 0.2
+__C.UPDATER.USE_3D_LOSS                   = True
+__C.UPDATER.LEARNING_RATE                 = 1e-3
+__C.UPDATER.NOISE_LENGTH                  = 32
+# __C.UPDATER.WEIGHT_DECAY                  = 
+
+#
 # 2d supervision
 #
 __C.SUPERVISION_2D                         = edict()
 __C.SUPERVISION_2D.LOSS_TYPE               = 'bce_prob'
 __C.SUPERVISION_2D.PROJ_TYPE               = 'CONT' #CONT: continuous projection, DISC: discrete projection      
-__C.SUPERVISION_2D.USE_AFFINITY            = False
+__C.SUPERVISION_2D.USE_AFFINITY            = True
 __C.SUPERVISION_2D.USE_2D_LOSS             = True
 __C.SUPERVISION_2D.LAMDA_2D_LOSS           = 1.
 
@@ -82,22 +93,22 @@ __C.SUPERVISION_2D.LAMDA_2D_LOSS           = 1.
 # 3d supervision
 #
 __C.SUPERVISION_3D                         = edict()
-__C.SUPERVISION_3D.USE_3D_LOSS             = False
+__C.SUPERVISION_3D.USE_3D_LOSS             = True
 __C.SUPERVISION_3D.LAMDA_3D_LOSS           = 1.
 
 #
 # Continuous Projection
 #
 __C.PROJECTION                             = edict()
-__C.PROJECTION.GRID_H                      = 128
-__C.PROJECTION.GRID_W                      = 128
+__C.PROJECTION.GRID_H                      = 64
+__C.PROJECTION.GRID_W                      = 64
 __C.PROJECTION.SIGMA_SQ_DISC               = 0.5
 __C.PROJECTION.SIGMA_SQ_CONT               = 0.4
-__C.PROJECTION.NUM_VIEWS                   = 1
+__C.PROJECTION.NUM_VIEWS                   = 3
 # __C.PROJECTION.NUM_VIEWS                   = 1 # only for test time optimization
 __C.PROJECTION.LAMDA_BCE                   = 1.
-__C.PROJECTION.LAMDA_AFF_FWD               = 1.
-__C.PROJECTION.LAMDA_AFF_BWD               = 1.
+__C.PROJECTION.LAMDA_AFF_FWD               = 0.5
+__C.PROJECTION.LAMDA_AFF_BWD               = 0.5
 
 #
 # Training
@@ -105,7 +116,7 @@ __C.PROJECTION.LAMDA_AFF_BWD               = 1.
 __C.TRAIN                                   = edict()
 __C.TRAIN.RESUME_TRAIN                      = True
 __C.TRAIN.NUM_WORKER                        = 4             # number of data workers
-__C.TRAIN.NUM_EPOCHES                       = 1000
+__C.TRAIN.NUM_EPOCHES                       = 1500
 __C.TRAIN.BRIGHTNESS                        = .4
 __C.TRAIN.CONTRAST                          = .4
 __C.TRAIN.SATURATION                        = .4
@@ -138,20 +149,18 @@ __C.TEST                                    = edict()
 __C.TEST.RANDOM_BG_COLOR_RANGE              = [[240, 240], [240, 240], [240, 240]]
 __C.TEST.VOXEL_THRESH                       = [.2, .3, .4, .5]
 __C.TEST.NUM_WORKER                         = 4             # number of data workers
-__C.TEST.RECONSTRUCTION_WEIGHTS             = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/output_3d/checkpoints/best-reconstruction-ckpt.pth'
-__C.TEST.VIEW_ENCODER_WEIGHTS               = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/output_v3/checkpoints/best-reconstruction-ckpt.pth'
-__C.TEST.VIEW_ESTIMATION_WEIGHTS            = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/output_v3/checkpoints/best-view-ckpt.pth'
-__C.TEST.RESULT_PATH                        = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/output_3d/test.txt'
+__C.TEST.RECONSTRUCTION_WEIGHTS             = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v1/checkpoints/best-reconstruction-ckpt.pth'
+__C.TEST.RESULT_PATH                        = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_3_28/baseline/test.txt'
 
 #
 # Evaluating options
 #
 __C.EVALUATE                                = edict()
 __C.EVALUATE.TAXONOMY_ID                    = '03001627'
-__C.EVALUATE.INPUT_IMAGE_FOLDER             = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/compare_result_3_18_senior_meeting/baseline/evaluate/evaluate_input_img'
-__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/compare_result_3_18_senior_meeting/baseline/evaluate/evaluate_output'
-__C.EVALUATE.INFO_FILE                      = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/compare_result_3_18_senior_meeting/baseline/evaluate/eval_chair.txt'
-__C.EVALUATE.RECONSTRUCTION_WEIGHTS         = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/compare_result_3_18_senior_meeting/baseline/checkpoint/best-reconstruction-ckpt.pth'
+__C.EVALUATE.INPUT_IMAGE_FOLDER             = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_3_28/baseline/evaluate_input_img'
+__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_3_28/baseline/evaluate_output'
+__C.EVALUATE.INFO_FILE                      = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_3_28/baseline/eval_chair.txt'
+__C.EVALUATE.RECONSTRUCTION_WEIGHTS         = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v1/checkpoints/best-reconstruction-ckpt.pth'
 
 __C.EVALUATE.VIEW_ENCODER_WEIGHTS           = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/output_v3/checkpoints/best-reconstruction-ckpt.pth'
 __C.EVALUATE.VIEW_ESTIMATION_WEIGHTS        = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/output_v3/checkpoints/best-view-ckpt.pth'
@@ -160,10 +169,10 @@ __C.EVALUATE.VIEW_ESTIMATION_WEIGHTS        = '/media/caig/FECA2C89CA2C406F/sket
 # Evaluate on the true habd draw image
 #
 __C.EVALUATE_HAND_DRAW                                = edict()
-__C.EVALUATE_HAND_DRAW.INPUT_IMAGE_FOLDER             = '/media/itri/Files_2tb/chaoyu/pointcloud3d/pc3d/evaluate/hand_draw_input_img/'
-__C.EVALUATE_HAND_DRAW.OUTPUT_FOLDER                  = '/media/itri/Files_2tb/chaoyu/pointcloud3d/pc3d/evaluate/hand_draw_output/'
-__C.EVALUATE_HAND_DRAW.RECONSTRUCTION_WEIGHTS         = '/media/itri/Files_2tb/chaoyu/pointcloud3d/output/new_output/checkpoints/2020-12-17T11:56:09.024186/best-reconstruction-ckpt.pth'
-__C.EVALUATE_HAND_DRAW.VIEW_ESTIMATION_WEIGHTS        = '/media/itri/Files_2tb/chaoyu/pointcloud3d/output/new_output/checkpoints/2020-12-17T11:56:09.024186/best-view-ckpt.pth'
+__C.EVALUATE_HAND_DRAW.INPUT_IMAGE_FOLDER             = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_3_28/v9/evaluate_hand_draw/hand_draw_input_img/'
+__C.EVALUATE_HAND_DRAW.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_3_28/v9/evaluate_hand_draw/hand_draw_output/'
+__C.EVALUATE_HAND_DRAW.RECONSTRUCTION_WEIGHTS         = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v9/checkpoints/best-reconstruction-ckpt.pth'
+# __C.EVALUATE_HAND_DRAW.VIEW_ESTIMATION_WEIGHTS        = '/media/itri/Files_2tb/chaoyu/pointcloud3d/output/new_output/checkpoints/2020-12-17T11:56:09.024186/best-view-ckpt.pth'
 
 #
 # Evaluating options
@@ -179,5 +188,5 @@ __C.EVALUATE_FIXED_VIEW.RECONSTRUCTION_WEIGHTS      = '/media/caig/FECA2C89CA2C4
 # Test time optimization
 #
 __C.TEST_OPT                                        = edict()
-__C.TEST_OPT.RECONSTRUCTION_WEIGHTS                 = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/output_xy_plane_init_l210/checkpoints/best-reconstruction-ckpt.pth'
+__C.TEST_OPT.RECONSTRUCTION_WEIGHTS                 = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v1/checkpoints/best-reconstruction-ckpt.pth'
 __C.TEST_OPT.OUT_PATH                               = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/test_opt'

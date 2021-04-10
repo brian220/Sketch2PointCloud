@@ -25,6 +25,7 @@ from time import time
 from core.valid import valid_net
 from models.networks_psgn import Pixel2Pointcloud_PSGN_FC
 from models.networks_graphx import Pixel2Pointcloud_GRAPHX
+from models.updater import Updater
 
 def train_net(cfg):
     print("cuda is available?", torch.cuda.is_available())
@@ -75,15 +76,21 @@ def train_net(cfg):
                                       use_graphx=cfg.GRAPHX.USE_GRAPHX)
     elif cfg.NETWORK.REC_MODEL == 'PSGN_FC':
         net = Pixel2Pointcloud_PSGN_FC(cfg=cfg,
-                                      optimizer_conv=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.PSGN_FC_LEARNING_RATE, weight_decay=cfg.TRAIN.PSGN_FC_CONV_WEIGHT_DECAY),
-                                      optimizer_fc=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.PSGN_FC_LEARNING_RATE, weight_decay=cfg.TRAIN.PSGN_FC_FC_WEIGHT_DECAY),
-                                      scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA))
+                                       optimizer_conv=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.PSGN_FC_LEARNING_RATE, weight_decay=cfg.TRAIN.PSGN_FC_CONV_WEIGHT_DECAY),
+                                       optimizer_fc=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.PSGN_FC_LEARNING_RATE, weight_decay=cfg.TRAIN.PSGN_FC_FC_WEIGHT_DECAY),
+                                       scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA))
+    
+    # Updater network
+    update_net = Updater(cfg=cfg,
+                         optimizer=lambda x: torch.optim.Adam(x, lr=cfg.UPDATER.LEARNING_RATE))
 
     if torch.cuda.is_available():
-       net = torch.nn.DataParallel(net, device_ids=cfg.CONST.DEVICE).cuda() 
+       net = torch.nn.DataParallel(net, device_ids=cfg.CONST.DEVICE).cuda()
+       update_net = torch.nn.DataParallel(update_net, device_ids=cfg.CONST.DEVICE).cuda()
 
     print(net)
-    
+    print(update_net)
+
     init_epoch = 0
     # best_emd =  10000 # less is better
     best_loss = 100000
@@ -106,7 +113,8 @@ def train_net(cfg):
     ckpt_dir = output_dir % 'checkpoints'
     train_writer = SummaryWriter(os.path.join(log_dir, 'train'))
     val_writer = SummaryWriter(os.path.join(log_dir, 'test'))
-
+    
+    # copy the config file
     copyfile(cfg.DIR.CONFIG_PATH, os.path.join(cfg.DIR.OUT_PATH, 'config-backup.py'))
 
     # Training loop
@@ -121,7 +129,8 @@ def train_net(cfg):
         loss_2ds = utils.network_utils.AverageMeter()
         loss_3ds = utils.network_utils.AverageMeter()
 
-        net.train()
+        net.eval()
+        update_net.train()
 
         batch_end_time = time()
         n_batches = len(train_data_loader)
@@ -142,30 +151,42 @@ def train_net(cfg):
             model_y = utils.network_utils.var_or_cuda(model_y)
             init_point_clouds = utils.network_utils.var_or_cuda(init_point_clouds)
             ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
+            
+            # net give out a point cloud
+            pred_pc = net(rendering_images, init_point_clouds)
 
-            total_loss, loss_2d, loss_3d = net.module.learn(rendering_images, init_point_clouds, ground_truth_point_clouds, model_x, model_y, model_gt)
+            # update net update point cloud
+            total_loss = update_net.module.learn(rendering_images, pred_pc, ground_truth_point_clouds)
             
             reconstruction_losses.update(total_loss)
-            loss_2ds.update(loss_2d)
-            loss_3ds.update(loss_3d)
+            # loss_2ds.update(loss_2d)
+            # loss_3ds.update(loss_3d)
 
             # Tick / tock
             batch_time.update(time() - batch_end_time)
             batch_end_time = time()
+            """
             print(
                 '[INFO] %s [Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) \
                  Total_loss = %.4f loss_2d = %.4f loss_3d = %.4f'
                 % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val,
                    data_time.val, total_loss, loss_2d, loss_3d))
-            
+            """
+            print(
+                '[INFO] %s [Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) \
+                 Total_loss = %.4f'
+                % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val,
+                   data_time.val, total_loss))
+
+           
         # Append epoch loss to TensorBoard
         train_writer.add_scalar('Total/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)
-        train_writer.add_scalar('2D/EpochLoss_Loss_2D', loss_2ds.avg, epoch_idx + 1)
-        train_writer.add_scalar('3D/EpochLoss_Loss_3D', loss_3ds.avg, epoch_idx + 1)
+        # train_writer.add_scalar('2D/EpochLoss_Loss_2D', loss_2ds.avg, epoch_idx + 1)
+        # train_writer.add_scalar('3D/EpochLoss_Loss_3D', loss_3ds.avg, epoch_idx + 1)
         
 
         # Validate the training models
-        current_loss = valid_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, net)
+        current_loss = valid_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, net, update_net)
         
         # Save weights to file
         
@@ -175,7 +196,7 @@ def train_net(cfg):
 
             utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'ckpt-epoch-%04d.pth' % (epoch_idx + 1)), 
                                                  epoch_idx + 1, 
-                                                 net,
+                                                 update_net,
                                                  best_loss, best_epoch)
         
         # Save best check point for cd
@@ -185,9 +206,9 @@ def train_net(cfg):
 
             best_loss = current_loss
             best_epoch = epoch_idx + 1
-            utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'best-reconstruction-ckpt.pth'), 
+            utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'best-update-ckpt.pth'), 
                                                  epoch_idx + 1, 
-                                                 net,
+                                                 update_net,
                                                  best_loss, best_epoch)
     
         

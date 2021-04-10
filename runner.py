@@ -24,7 +24,7 @@ from core.evaluate import evaluate_net
 from core.test_opt import test_opt_net
 # from core.evaluate_graphx import evaluate_net
 # from core.evaluate_graphx_fixed_view import evaluate_fixed_view_net
-# from core.evaluate_hand_draw import evaluate_hand_draw_net
+from core.evaluate_hand_draw import evaluate_hand_draw_net
 
 
 def get_args_from_command_line():
@@ -82,6 +82,8 @@ def main():
         test_net(cfg)
     elif args.evaluate:
         evaluate_net(cfg)
+    elif args.evaluate_hand_draw:
+        evaluate_hand_draw_net(cfg)
     elif args.test_opt:
         test_opt_net(cfg)
     else:

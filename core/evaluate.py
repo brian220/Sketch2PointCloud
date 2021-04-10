@@ -27,9 +27,6 @@ from pyntcloud import PyntCloud
 def evaluate_net(cfg):
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
     torch.backends.cudnn.benchmark = True
-    
-    IMG_SIZE = cfg.CONST.IMG_H, cfg.CONST.IMG_W
-    CROP_SIZE = cfg.CONST.CROP_IMG_H, cfg.CONST.CROP_IMG_W
 
     eval_transforms = utils.data_transforms.Compose([
         # utils.data_transforms.CenterCrop(IMG_SIZE, CROP_SIZE),
@@ -42,7 +39,7 @@ def evaluate_net(cfg):
     # The parameters here need to be set in cfg
     if cfg.NETWORK.REC_MODEL == 'GRAPHX':
         net = Pixel2Pointcloud_GRAPHX(cfg=cfg,
-                                      in_channels=1, 
+                                      in_channels=3, 
                                       in_instances=cfg.GRAPHX.NUM_INIT_POINTS,
                                       optimizer=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.GRAPHX_LEARNING_RATE, weight_decay=cfg.TRAIN.GRAPHX_WEIGHT_DECAY),
                                       scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
@@ -113,16 +110,8 @@ def init_pointcloud_loader(num_points):
 def evaluate_on_img(cfg, net, input_img_path, eval_transforms, eval_id, view_id, epoch_id, gt_point_cloud):
     # load img
     sample = cv2.imread(input_img_path, cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255.
+    sample = cv2.cvtColor(sample, cv2.COLOR_GRAY2RGB)
 
-    if cfg.NETWORK.REC_MODEL == 'PSGN_FC':
-        sample = cv2.resize(sample, (self.grid_h, self.grid_w))
-    elif cfg.NETWORK.REC_MODEL == 'GRAPHX':
-        sample = cv2.resize(sample, (224, 224))
-    else:
-        print('Invalid model name, please check the config.py (NET_WORK.REC_MODEL)')
-        sys.exit(2)
-
-    sample = np.expand_dims(sample, -1)
     samples = []
     samples.append(sample)
     samples = np.array(samples).astype(np.float32) 

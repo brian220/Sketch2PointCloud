@@ -27,7 +27,6 @@ from models.networks_graphx import Pixel2Pointcloud_GRAPHX
 
 from losses.chamfer_loss import ChamferLoss
 from losses.earth_mover_distance import EMD
-from utils.point_cloud_utils import Scale, Scale_one
 
 def test_net(cfg):
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
@@ -48,7 +47,7 @@ def test_net(cfg):
     # The parameters here need to be set in cfg
     if cfg.NETWORK.REC_MODEL == 'GRAPHX':
         net = Pixel2Pointcloud_GRAPHX(cfg=cfg,
-                                      in_channels=1, 
+                                      in_channels=3, 
                                       in_instances=cfg.GRAPHX.NUM_INIT_POINTS,
                                       optimizer=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.GRAPHX_LEARNING_RATE, weight_decay=cfg.TRAIN.GRAPHX_WEIGHT_DECAY),
                                       scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
@@ -67,9 +66,9 @@ def test_net(cfg):
     # Set up loss functions
     emd = EMD().cuda()
     cd = ChamferLoss().cuda()
-    scale = Scale(cfg).cuda()
     
     # Batch average meterics
+    loss_2ds = utils.network_utils.AverageMeter()
     cd_distances = utils.network_utils.AverageMeter()
     emd_distances = utils.network_utils.AverageMeter()
     pointwise_emd_distances = utils.network_utils.AverageMeter()
@@ -98,37 +97,34 @@ def test_net(cfg):
             #=================================================#
             #           Test the encoder, decoder             #
             #=================================================#
-            total_loss, loss_2d, loss_3d, pred_pc = net.module.loss(input_imgs, init_pc, gt_pc, model_x, model_y, model_gt)
-
-            # scale the pred and gt to same size xyz between [-0.5, 0.5] and compute cd, emd
-            scaled_pred_pc, scaled_gt_pc = scale(pred_pc, gt_pc)
-
-            scaled_pred_pc = utils.network_utils.var_or_cuda(scaled_pred_pc)
-            scaled_gt_pc = utils.network_utils.var_or_cuda(scaled_gt_pc)
+            loss, loss_2d, loss_3d, generated_point_clouds, proj_pred, proj_gt, point_gt = net.module.loss(input_imgs, init_pc, gt_pc, model_x, model_y, model_gt)
 
             # Compute CD, EMD
-            cd_distance = cd(scaled_pred_pc, scaled_gt_pc) / cfg.CONST.BATCH_SIZE / cfg.CONST.NUM_POINTS
-            emd_distance = torch.mean(emd(scaled_pred_pc, scaled_gt_pc))
+            cd_distance = cd(generated_point_clouds, gt_pc) / cfg.CONST.BATCH_SIZE / cfg.CONST.NUM_POINTS
+            emd_distance = torch.mean(emd(generated_point_clouds, gt_pc))
             pointwise_emd_distance = emd_distance / cfg.CONST.NUM_POINTS
             
             # Append loss and accuracy to average metrics
+            loss_2ds.update(loss_2d.item())
             cd_distances.update(cd_distance.item())
             emd_distances.update(emd_distance.item())
             pointwise_emd_distances.update(pointwise_emd_distance.item())
 
-            print("Test on [%d/%d] data, CD: %.4f Point EMD: %.4f Total EMD %.4f" % (sample_idx + 1,  n_batches, cd_distance.item(), pointwise_emd_distance.item(), emd_distance.item()))
+            print("Test on [%d/%d] data, Loss_2d: %.4f CD: %.4f Point EMD: %.4f Total EMD %.4f" % (sample_idx + 1,  n_batches, loss_2d.item(), cd_distance.item(), pointwise_emd_distance.item(), emd_distance.item()))
     
     # print result
     print("Reconstruction result:")
     print("CD result: ", cd_distances.avg)
     print("Pointwise EMD result: ", pointwise_emd_distances.avg)
     print("Total EMD result", emd_distances.avg)
+    print("2d distance", loss_2ds.avg)
     logname = cfg.TEST.RESULT_PATH 
     with open(logname, 'a') as f:
         f.write('Reconstruction result: \n')
         f.write("CD result: %.8f \n" % cd_distances.avg)
         f.write("Pointwise EMD result: %.8f \n" % pointwise_emd_distances.avg)
         f.write("Total EMD result: %.8f \n" % emd_distances.avg)
+        f.write("Total 2d distance: %.8f \n" % loss_2ds.avg)
             
 
 

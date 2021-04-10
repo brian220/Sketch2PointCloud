@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Developed by Chaoyu Huang 
-# email: b608390.cs04@nctu.edu.tw
-# Lot's of code reference to Pix2Vox: 
-# https://github.com/hzxie/Pix2Vox
+# Developed by Haozhe Xie <cshzxie@gmail.com>
 
 import json
 import numpy as np
@@ -22,106 +19,122 @@ import utils.network_utils
 
 from datetime import datetime as dt
 
-from models.encoder import Encoder
-from models.decoder import Decoder
-from models.view_estimater import ViewEstimater
+from models.networks_psgn import Pixel2Pointcloud_PSGN_FC
+from models.networks_graphx import Pixel2Pointcloud_GRAPHX
 
 from pyntcloud import PyntCloud
 
 def evaluate_hand_draw_net(cfg):
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
     torch.backends.cudnn.benchmark = True
-    
-    IMG_SIZE = cfg.CONST.IMG_H, cfg.CONST.IMG_W
-    CROP_SIZE = cfg.CONST.CROP_IMG_H, cfg.CONST.CROP_IMG_W
 
     eval_transforms = utils.data_transforms.Compose([
-        utils.data_transforms.CenterCrop(IMG_SIZE, CROP_SIZE),
-        utils.data_transforms.RandomBackground(cfg.TEST.RANDOM_BG_COLOR_RANGE),
-        utils.data_transforms.Normalize(mean=cfg.DATASET.MEAN, std=cfg.DATASET.STD),
         utils.data_transforms.ToTensor(),
     ])
 
     # Set up networks
-    encoder = Encoder(cfg)
-    decoder = Decoder(cfg)
-    azi_classes, ele_classes = int(360 / cfg.CONST.BIN_SIZE), int(180 / cfg.CONST.BIN_SIZE)
-    view_estimater = ViewEstimater(cfg, azi_classes=azi_classes, ele_classes=ele_classes)
+    # The parameters here need to be set in cfg
+    if cfg.NETWORK.REC_MODEL == 'GRAPHX':
+        net = Pixel2Pointcloud_GRAPHX(cfg=cfg,
+                                      in_channels=3, 
+                                      in_instances=cfg.GRAPHX.NUM_INIT_POINTS,
+                                      optimizer=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.GRAPHX_LEARNING_RATE, weight_decay=cfg.TRAIN.GRAPHX_WEIGHT_DECAY),
+                                      scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
+                                      use_graphx=cfg.GRAPHX.USE_GRAPHX)
 
     if torch.cuda.is_available():
-        encoder = torch.nn.DataParallel(encoder).cuda()
-        decoder = torch.nn.DataParallel(decoder).cuda()
-        view_estimater = torch.nn.DataParallel(view_estimater).cuda()
+        net = torch.nn.DataParallel(net).cuda()
     
     # Load weight
     # Load weight for encoder, decoder
     print('[INFO] %s Loading reconstruction weights from %s ...' % (dt.now(), cfg.EVALUATE_HAND_DRAW.RECONSTRUCTION_WEIGHTS))
     rec_checkpoint = torch.load(cfg.EVALUATE_HAND_DRAW.RECONSTRUCTION_WEIGHTS)
-    encoder.load_state_dict(rec_checkpoint['encoder_state_dict'])
-    decoder.load_state_dict(rec_checkpoint['decoder_state_dict'])
+    net.load_state_dict(rec_checkpoint['net'])
     print('[INFO] Best reconstruction result at epoch %d ...' % rec_checkpoint['epoch_idx'])
+    epoch_id = int(rec_checkpoint['epoch_idx'])
+    
+    net.eval()
+    
+    # folder path for input imgs
+    path_lists = os.listdir(cfg.DATASETS.SHAPENET.HAND_DRAW_IMG_PATH)
 
-    # Load weight for view estimater
-    print('[INFO] %s Loading view estimation weights from %s ...' % (dt.now(), cfg.EVALUATE_HAND_DRAW.VIEW_ESTIMATION_WEIGHTS))
-    view_checkpoint = torch.load(cfg.EVALUATE_HAND_DRAW.VIEW_ESTIMATION_WEIGHTS)
-    view_estimater.load_state_dict(view_checkpoint['view_estimator_state_dict'])
-    print('[INFO] Best view estimation result at epoch %d ...' % view_checkpoint['epoch_idx'])
+    for img_path in path_lists:
+        print(img_path)
+        eval_id = img_path[:-4]
+        sample_name = 'sample_' + str(eval_id)
+        view_id = 0
 
-    for img_path in os.listdir(cfg.EVALUATE_HAND_DRAW.INPUT_IMAGE_FOLDER):
-        eval_id = int(img_path[:-4])
-        input_img_path = os.path.join(cfg.EVALUATE_HAND_DRAW.INPUT_IMAGE_FOLDER, img_path)
-        print(input_img_path)
-        evaluate_hand_draw_img(cfg, 
-                               encoder, decoder, view_estimater,
-                               input_img_path,
-                               eval_transforms, eval_id)
+        print("eval_id", eval_id)
+        print("sample_name", sample_name)
+        print("view_id", view_id)
+        
+        # get img path
+        input_img_path = cfg.DATASETS.SHAPENET.HAND_DRAW_IMG_PATH + '/' + img_path
+        
+        # evaluate single img
+        evaluate_on_hand_draw_img(cfg, net, input_img_path, eval_transforms, eval_id, view_id, epoch_id)
 
 
-def evaluate_hand_draw_img(cfg, 
-                           encoder, decoder, view_estimater,
-                           input_img_path,
-                           eval_transforms, eval_id):
+def get_point_cloud(point_cloud_file):
+    # get data of point cloud
+    _, suffix = os.path.splitext(point_cloud_file)
+
+    if suffix == '.ply':
+        point_cloud = PyntCloud.from_file(point_cloud_file)
+        point_cloud = np.array(point_cloud.points)
+    elif suffix == '.npy':
+        point_cloud = np.load(point_cloud_file)
+
+    return point_cloud
+
+
+def init_pointcloud_loader(num_points):
+    Z = np.random.rand(num_points) + 1.
+    h = np.random.uniform(10., 214., size=(num_points,))
+    w = np.random.uniform(10., 214., size=(num_points,))
+    X = (w - 111.5) / 248. * -Z
+    Y = (h - 111.5) / 248. * Z
+    X = np.reshape(X, (-1, 1))
+    Y = np.reshape(Y, (-1, 1))
+    Z = np.reshape(Z, (-1, 1))
+    XYZ = np.concatenate((X, Y, Z), 1)
+    return XYZ.astype('float32')
+
+
+def evaluate_on_hand_draw_img(cfg, net, input_img_path, eval_transforms, eval_id, view_id, epoch_id):
     # load img
-    img_np = cv2.imread(input_img_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.
-    sample = np.array([img_np])
-    rendering_images = eval_transforms(rendering_images=sample)
-    print(rendering_images.size())
+    sample = cv2.imread(input_img_path, cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255.
+    sample = cv2.cvtColor(sample, cv2.COLOR_GRAY2RGB)
+
+    samples = []
+    samples.append(sample)
+    samples = np.array(samples).astype(np.float32) 
+    rendering_images = eval_transforms(rendering_images=samples)
+
+    # load init point clouds
+    init_point_cloud_np = init_pointcloud_loader(cfg.GRAPHX.NUM_INIT_POINTS)
+    init_point_clouds = np.array([init_point_cloud_np])
+    init_point_clouds = torch.from_numpy(init_point_clouds)
 
     # inference model
     with torch.no_grad():
-        # Only one image per sample
-        rendering_images = torch.squeeze(rendering_images, 1)
-        
-         # Get data from data loader
-        rendering_images = utils.network_utils.var_or_cuda(rendering_images)
+        # Get data from data loader
+        input_imgs = utils.network_utils.var_or_cuda(rendering_images)
+        init_pc = utils.network_utils.var_or_cuda(init_point_clouds)
         
         #=================================================#
         #           Evaluate the encoder, decoder         #
         #=================================================#
-        vgg_features, image_code = encoder(rendering_images)
-        image_code = [image_code]
-        generated_point_clouds = decoder(image_code)
+        pred_pc = net(input_imgs, init_pc)
 
-        #=================================================#
-        #          Evaluate the view estimater            #
-        #=================================================#
-        output = view_estimater(vgg_features)
+        # Save a copy of image
+        evaluate_img_dir = os.path.join(cfg.EVALUATE_HAND_DRAW.INPUT_IMAGE_FOLDER)
+        if not os.path.exists(evaluate_img_dir):
+            os.mkdir(evaluate_img_dir)
+        copyfile(input_img_path, os.path.join(evaluate_img_dir, eval_id + '.png'))
         
-        #=================================================#
-        #              Get predict view                   #
-        #=================================================#
-        preds_cls = utils.view_pred_utils.get_pred_from_cls_output([output[0], output[1]])
-            
-        preds = []
-        for n in range(len(preds_cls)):
-            pred_delta = output[n + 2]
-            delta_value = pred_delta[torch.arange(pred_delta.size(0)), preds_cls[n].long()].tanh() / 2
-            preds.append((preds_cls[n].float() + delta_value + 0.5) * cfg.CONST.BIN_SIZE)
-
         # Predict Pointcloud
-        g_pc = generated_point_clouds[0].detach().cpu().numpy()
-        pred_view = []
-        pred_view.append(preds[0][0].detach().cpu().numpy())
-        pred_view.append(preds[1][0].detach().cpu().numpy())
-        rendering_views = utils.point_cloud_visualization.get_point_cloud_image(g_pc, cfg.EVALUATE_HAND_DRAW.OUTPUT_FOLDER,
-                                                                                eval_id, "reconstruction", pred_view)
+        g_pc = pred_pc[0].detach().cpu().numpy()
+        rendering_views = utils.point_cloud_visualization.get_point_cloud_image(g_pc,
+                                                                                os.path.join(cfg.EVALUATE_HAND_DRAW.OUTPUT_FOLDER, 'reconstruction'),
+                                                                                int(eval_id), epoch_id, "reconstruction")

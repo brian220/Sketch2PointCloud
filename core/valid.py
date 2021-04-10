@@ -27,7 +27,8 @@ def valid_net(cfg,
              output_dir=None,
              test_data_loader=None,
              test_writer=None,
-             net=None):
+             net=None,
+             update_net=None):
 
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
     torch.backends.cudnn.benchmark = True
@@ -39,6 +40,7 @@ def valid_net(cfg,
     loss_3ds = utils.network_utils.AverageMeter()
 
     net.eval()
+    update_net.eval()
 
     # Testing loop
     for sample_idx, (taxonomy_names, sample_names, rendering_images,
@@ -60,24 +62,33 @@ def valid_net(cfg,
             #=================================================#
             #                Test the network                 #
             #=================================================#
+            """
             loss, loss_2d, loss_3d, generated_point_clouds, proj_pred, proj_gt, point_gt = net.module.loss(rendering_images, init_point_clouds, ground_truth_point_clouds, model_x, model_y, model_gt)
             reconstruction_loss = loss.cpu().detach().data.numpy()
             loss_2d = loss_2d.cpu().detach().data.numpy()
             loss_3d = loss_3d.cpu().detach().data.numpy()
-            
+            """
+
+            pred_pc = net(rendering_images, init_point_clouds)
+            total_loss, update_pc = update_net.module.loss(rendering_images, pred_pc, ground_truth_point_clouds)
+            reconstruction_loss = total_loss.cpu().detach().data.numpy()
+
+
             # Append loss and accuracy to average metrics
             reconstruction_losses.update(reconstruction_loss)
-            loss_2ds.update(loss_2d)
-            loss_3ds.update(loss_3d)
+            # loss_2ds.update(loss_2d)
+            # loss_3ds.update(loss_3d)
 
             # Append generated point clouds to TensorBoard
             if output_dir and sample_idx < 3:
-                print(sample_names)
+                
                 img_dir = output_dir % 'images'
+
+                """
                 proj_dir = output_dir % 'projs'
                 if not os.path.exists(proj_dir):
                     os.makedirs(proj_dir)
-
+                
                 if cfg.SUPERVISION_2D.USE_2D_LOSS and cfg.SUPERVISION_2D.PROJ_TYPE == 'DISC':
                     # save gt
                     gt_np = proj_gt[0][0].detach().cpu().numpy()
@@ -94,12 +105,19 @@ def valid_net(cfg,
                     proj_pred_np = proj_pred[0][0].detach().cpu().numpy()
                     save_path = os.path.join(proj_dir, 'proj%d-%06d %s.png' % (sample_idx, epoch_idx, "proj_pred"))
                     sc.imsave(save_path, proj_pred_np)
+                """
     
                 # Predict Pointcloud
-                g_pc = generated_point_clouds[0].detach().cpu().numpy()
-                rendering_views = utils.point_cloud_visualization.get_point_cloud_image(g_pc, os.path.join(img_dir, 'test'),
+                p_pc = pred_pc[0].detach().cpu().numpy()
+                rendering_views = utils.point_cloud_visualization.get_point_cloud_image(p_pc, os.path.join(img_dir, 'test'),
                                                                                         sample_idx, epoch_idx, "reconstruction")
                 test_writer.add_image('Test Sample#%02d/Point Cloud Reconstructed' % sample_idx, rendering_views, epoch_idx)
+                
+                # Update Pointcloud
+                u_pc = update_pc[0].detach().cpu().numpy()
+                rendering_views = utils.point_cloud_visualization.get_point_cloud_image(u_pc, os.path.join(img_dir, 'test'),
+                                                                                        sample_idx, epoch_idx, "update")
+                test_writer.add_image('Test Sample#%02d/Point Cloud Updated' % sample_idx, rendering_views, epoch_idx)
                 
                 # Groundtruth Pointcloud
                 gt_pc = ground_truth_point_clouds[0].detach().cpu().numpy()
@@ -110,7 +128,7 @@ def valid_net(cfg,
 
     if test_writer is not None:
         test_writer.add_scalar('Total/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx)
-        test_writer.add_scalar('2D/EpochLoss_Loss_2D', loss_2ds.avg, epoch_idx)
-        test_writer.add_scalar('3D/EpochLoss_Loss_3D', loss_3ds.avg, epoch_idx)
+        # test_writer.add_scalar('2D/EpochLoss_Loss_2D', loss_2ds.avg, epoch_idx)
+        # test_writer.add_scalar('3D/EpochLoss_Loss_3D', loss_3ds.avg, epoch_idx)
 
     return reconstruction_losses.avg
