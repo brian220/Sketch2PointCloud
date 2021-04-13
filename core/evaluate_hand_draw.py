@@ -137,4 +137,4 @@ def evaluate_on_hand_draw_img(cfg, net, input_img_path, eval_transforms, eval_id
         g_pc = pred_pc[0].detach().cpu().numpy()
         rendering_views = utils.point_cloud_visualization.get_point_cloud_image(g_pc,
                                                                                 os.path.join(cfg.EVALUATE_HAND_DRAW.OUTPUT_FOLDER, 'reconstruction'),
-                                                                                int(eval_id), epoch_id, "reconstruction")
+                                                                                int(eval_id), epoch_id, "3d loss + 2d refine")

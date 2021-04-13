@@ -92,14 +92,15 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         return len(self.file_list)
 
     def __getitem__(self, idx):
-        taxonomy_name, sample_name, rendering_images, \
+        taxonomy_name, sample_name, rendering_images, update_images,\
         model_gt, model_x, model_y, \
         init_point_cloud, ground_truth_point_cloud = self.get_datum(idx)
 
         if self.transforms:
             rendering_images = self.transforms(rendering_images)
+            update_images = self.transforms(update_images)
 
-        return (taxonomy_name, sample_name, rendering_images,
+        return (taxonomy_name, sample_name, rendering_images, update_images,
                 model_gt, model_x, model_y, 
                 init_point_cloud, ground_truth_point_cloud)
 
@@ -107,6 +108,7 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         taxonomy_name = self.file_list[idx]['taxonomy_name']
         sample_name = self.file_list[idx]['sample_name']
         rendering_image_paths = self.file_list[idx]['rendering_images']
+        update_image_paths = self.file_list[idx]['update_images']
         depth_image_paths = self.file_list[idx]['depth_images']
         ground_truth_point_cloud_path = self.file_list[idx]['point_cloud']
         radian_x = self.file_list[idx]['radian_x']
@@ -126,11 +128,23 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         rendering_image = cv2.cvtColor(rendering_image, cv2.COLOR_GRAY2RGB)
 
         if len(rendering_image.shape) < 3:
-            print('[FATAL] %s It seems that there is something wrong with the image file %s' %
-                     (dt.now(), image_path))
+            print('[FATAL] %s It seems that there is something wrong with the rendering image file %s' %
+                     (dt.now(), selected_rendering_image_path))
             sys.exit(2)
         rendering_images.append(rendering_image)
-        
+
+        # read the update image, currently, use only one view to update (side view)
+        selected_update_image_path = update_image_paths[0]
+        update_images = []
+        update_image = cv2.imread(selected_update_image_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.
+        update_image = cv2.cvtColor(update_image, cv2.COLOR_GRAY2RGB)
+
+        if len(update_image.shape) < 3:
+            print('[FATAL] %s It seems that there is something wrong with the update image file %s' %
+                     (dt.now(), selected_update_image_path))
+            sys.exit(2)
+        update_images.append(update_image)
+
         # read the ground truth proj images and views (multi-views)
         model_gt = []
         model_x = []
@@ -162,11 +176,12 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
 
         # convert to np array
         rendering_images = np.array(rendering_images).astype(np.float32)
+        update_images = np.array(update_images).astype(np.float32)
         model_gt = np.array(model_gt).astype(np.float32)
         model_x = np.array(model_x).astype(np.float32)
         model_y = np.array(model_y).astype(np.float32)
         
-        return (taxonomy_name, sample_name, rendering_images,
+        return (taxonomy_name, sample_name, rendering_images, update_images,
                 model_gt, model_x, model_y,
                 init_pointcloud_loader(self.init_num_points), ground_truth_point_cloud)
 # //////////////////////////////// = End of ShapeNetDataset Class Definition = ///////////////////////////////// #
@@ -180,9 +195,11 @@ class ShapeNetDataLoader:
         self.depth_image_path_template = cfg.DATASETS.SHAPENET.DEPTH_PATH
         self.point_cloud_path_template = cfg.DATASETS.SHAPENET.POINT_CLOUD_PATH
         self.view_path_template = cfg.DATASETS.SHAPENET.VIEW_PATH
+        self.update_image_path_template = cfg.DATASETS.SHAPENET.UPDATE_PATH
 
         self.class_name = cfg.DATASET.CLASS
         self.render_views = cfg.DATASET.RENDER_VIEWS
+        self.update_views = cfg.DATASET.UPDATE_VIEWS
         self.depth_views = cfg.DATASET.DEPTH_VIEWS
         self.init_num_points = cfg.GRAPHX.NUM_INIT_POINTS
         self.proj_num_views = cfg.PROJECTION.NUM_VIEWS
@@ -243,10 +260,24 @@ class ShapeNetDataLoader:
                 rendering_image_file_paths.append(img_file_path)
             
             if len(rendering_image_file_paths) == 0:
-                print('[WARN] %s Ignore sample %s/%s since image files not exists.' %
+                print('[WARN] %s Ignore sample %s/%s since rendering image files not exists.' %
                       (dt.now(), taxonomy_folder_name, sample_name))
                 continue
-
+            
+            # Get file list of update view images
+            update_image_indexes = range(self.update_views)
+            update_image_file_paths = []
+            for image_idx in update_image_indexes:
+                update_image_file_path = self.update_image_path_template % (taxonomy_folder_name, sample_name)
+                if not os.path.exists(update_image_file_path):
+                    continue
+                update_image_file_paths.append(update_image_file_path)
+            
+            if len(update_image_file_paths) == 0:
+                print('[WARN] %s Ignore sample %s/%s since update image files not exists.' %
+                      (dt.now(), taxonomy_folder_name, sample_name))
+                continue
+            
             # Get file list of depth images
             depth_image_indexes = range(self.depth_views)
             depth_image_file_paths = []
@@ -280,16 +311,17 @@ class ShapeNetDataLoader:
                 # convert angles to radians
                 radian_x.append(angle_x*np.pi/180.)
                 radian_y.append((angle_y - 90.)*np.pi/180.) # original model face direction: z, change to x
-                
+
             # Append to the list of rendering images
             files_of_taxonomy.append({
                 'taxonomy_name': taxonomy_folder_name,
                 'sample_name': sample_name,
                 'rendering_images': rendering_image_file_paths,
+                'update_images': update_image_file_paths,
                 'depth_images' : depth_image_file_paths,
                 'point_cloud': point_cloud_file_path,
                 'radian_x' : radian_x,
-                'radian_y' : radian_y
+                'radian_y' : radian_y,
             })
 
         return files_of_taxonomy

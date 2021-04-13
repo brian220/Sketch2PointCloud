@@ -8,11 +8,13 @@
 
 import json
 import numpy as np
+import cv2
 import os
 import torch
 import torch.backends.cudnn
 import torch.utils.data
 import scipy.misc as sc
+from torchvision.utils import save_image
 
 import utils.point_cloud_visualization
 import utils.data_loaders
@@ -43,16 +45,18 @@ def valid_net(cfg,
     update_net.eval()
 
     # Testing loop
-    for sample_idx, (taxonomy_names, sample_names, rendering_images,
+    for sample_idx, (taxonomy_names, sample_names, rendering_images, update_images,
                     model_gt, model_x, model_y,
                     init_point_clouds, ground_truth_point_clouds) in enumerate(test_data_loader):
 
         with torch.no_grad():
             # Only one image per sample
             rendering_images = torch.squeeze(rendering_images, 1)
+            update_images = torch.squeeze(update_images, 1)
 
             # Get data from data loader
             rendering_images = utils.network_utils.var_or_cuda(rendering_images)
+            update_images = utils.network_utils.var_or_cuda(update_images)
             model_gt = utils.network_utils.var_or_cuda(model_gt)
             model_x = utils.network_utils.var_or_cuda(model_x)
             model_y = utils.network_utils.var_or_cuda(model_y)
@@ -70,9 +74,8 @@ def valid_net(cfg,
             """
 
             pred_pc = net(rendering_images, init_point_clouds)
-            total_loss, update_pc = update_net.module.loss(rendering_images, pred_pc, ground_truth_point_clouds)
+            total_loss, update_pc = update_net.module.loss(update_images, pred_pc, ground_truth_point_clouds)
             reconstruction_loss = total_loss.cpu().detach().data.numpy()
-
 
             # Append loss and accuracy to average metrics
             reconstruction_losses.update(reconstruction_loss)
@@ -83,7 +86,7 @@ def valid_net(cfg,
             if output_dir and sample_idx < 3:
                 
                 img_dir = output_dir % 'images'
-
+                sketch_dir = output_dir % 'sketchs'
                 """
                 proj_dir = output_dir % 'projs'
                 if not os.path.exists(proj_dir):
@@ -106,24 +109,41 @@ def valid_net(cfg,
                     save_path = os.path.join(proj_dir, 'proj%d-%06d %s.png' % (sample_idx, epoch_idx, "proj_pred"))
                     sc.imsave(save_path, proj_pred_np)
                 """
-    
+
+                if  not os.path.exists(sketch_dir):
+                    os.makedirs(sketch_dir)
+                
+                # rendering imgs
+                r_img = rendering_images[0]
+                r_img_path = os.path.join(sketch_dir, str(epoch_idx) + '_' + str(sample_idx) + '_' + 'render.png')
+                save_image(r_img, r_img_path)
+                r_img = cv2.imread(r_img_path)
+                test_writer.add_image('Test Sample#%02d/Img Reconstructed' % sample_idx, r_img, epoch_idx)
+                
+                # update imgs
+                u_img = update_images[0]
+                u_img_path = os.path.join(sketch_dir, str(epoch_idx) + '_' + str(sample_idx) + '_' + 'update.png')
+                save_image(u_img, u_img_path)
+                u_img = cv2.imread(u_img_path)
+                test_writer.add_image('Test Sample#%02d/Img Updated' % sample_idx, u_img, epoch_idx)
+
                 # Predict Pointcloud
                 p_pc = pred_pc[0].detach().cpu().numpy()
                 rendering_views = utils.point_cloud_visualization.get_point_cloud_image(p_pc, os.path.join(img_dir, 'test'),
-                                                                                        sample_idx, epoch_idx, "reconstruction")
+                                                                                        sample_idx, epoch_idx, "reconstruction", view=[90, 0])
                 test_writer.add_image('Test Sample#%02d/Point Cloud Reconstructed' % sample_idx, rendering_views, epoch_idx)
                 
                 # Update Pointcloud
                 u_pc = update_pc[0].detach().cpu().numpy()
                 rendering_views = utils.point_cloud_visualization.get_point_cloud_image(u_pc, os.path.join(img_dir, 'test'),
-                                                                                        sample_idx, epoch_idx, "update")
+                                                                                        sample_idx, epoch_idx, "update", view=[90, 0])
                 test_writer.add_image('Test Sample#%02d/Point Cloud Updated' % sample_idx, rendering_views, epoch_idx)
                 
                 # Groundtruth Pointcloud
                 gt_pc = ground_truth_point_clouds[0].detach().cpu().numpy()
                 # ground_truth_view = ground_truth_views[0].detach().cpu().numpy()
                 rendering_views = utils.point_cloud_visualization.get_point_cloud_image(gt_pc, os.path.join(img_dir, 'test'),
-                                                                                        sample_idx, epoch_idx, "ground truth")
+                                                                                        sample_idx, epoch_idx, "ground truth", view=[90, 0])
                 test_writer.add_image('Test Sample#%02d/Point Cloud GroundTruth' % sample_idx, rendering_views, epoch_idx)
 
     if test_writer is not None:

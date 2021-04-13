@@ -134,7 +134,7 @@ def train_net(cfg):
 
         batch_end_time = time()
         n_batches = len(train_data_loader)
-        for batch_idx, (taxonomy_names, sample_names, rendering_images,
+        for batch_idx, (taxonomy_names, sample_names, rendering_images, update_images,
                         model_gt, model_x, model_y,
                         init_point_clouds, ground_truth_point_clouds) in enumerate(train_data_loader):
 
@@ -143,9 +143,11 @@ def train_net(cfg):
     
             # Only one image per batch
             rendering_images = torch.squeeze(rendering_images, 1)
+            update_images = torch.squeeze(update_images, 1)
 
             # Get data from data loader
             rendering_images = utils.network_utils.var_or_cuda(rendering_images)
+            update_images = utils.network_utils.var_or_cuda(update_images)
             model_gt = utils.network_utils.var_or_cuda(model_gt)
             model_x = utils.network_utils.var_or_cuda(model_x)
             model_y = utils.network_utils.var_or_cuda(model_y)
@@ -156,7 +158,7 @@ def train_net(cfg):
             pred_pc = net(rendering_images, init_point_clouds)
 
             # update net update point cloud
-            total_loss = update_net.module.learn(rendering_images, pred_pc, ground_truth_point_clouds)
+            total_loss = update_net.module.learn(update_images, pred_pc, ground_truth_point_clouds)
             
             reconstruction_losses.update(total_loss)
             # loss_2ds.update(loss_2d)
@@ -177,7 +179,6 @@ def train_net(cfg):
                  Total_loss = %.4f'
                 % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val,
                    data_time.val, total_loss))
-
            
         # Append epoch loss to TensorBoard
         train_writer.add_scalar('Total/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)
