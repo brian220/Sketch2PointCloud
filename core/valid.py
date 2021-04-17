@@ -47,6 +47,7 @@ def valid_net(cfg,
     # Testing loop
     for sample_idx, (taxonomy_names, sample_names, rendering_images, update_images,
                     model_gt, model_x, model_y,
+                    update_model_gt, update_model_x, update_model_y,
                     init_point_clouds, ground_truth_point_clouds) in enumerate(test_data_loader):
 
         with torch.no_grad():
@@ -60,30 +61,28 @@ def valid_net(cfg,
             model_gt = utils.network_utils.var_or_cuda(model_gt)
             model_x = utils.network_utils.var_or_cuda(model_x)
             model_y = utils.network_utils.var_or_cuda(model_y)
+            update_model_gt = utils.network_utils.var_or_cuda(update_model_gt)
+            update_model_x = utils.network_utils.var_or_cuda(update_model_x)
+            update_model_y = utils.network_utils.var_or_cuda(update_model_y)
             init_point_clouds = utils.network_utils.var_or_cuda(init_point_clouds)
             ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
 
             #=================================================#
             #                Test the network                 #
             #=================================================#
-            """
-            loss, loss_2d, loss_3d, generated_point_clouds, proj_pred, proj_gt, point_gt = net.module.loss(rendering_images, init_point_clouds, ground_truth_point_clouds, model_x, model_y, model_gt)
-            reconstruction_loss = loss.cpu().detach().data.numpy()
+            pred_pc = net(rendering_images, init_point_clouds)
+            total_loss, loss_2d, loss_3d, update_pc = update_net.module.loss(update_images, pred_pc, ground_truth_point_clouds, update_model_x, update_model_y, update_model_gt)
+            reconstruction_loss = total_loss.cpu().detach().data.numpy()
             loss_2d = loss_2d.cpu().detach().data.numpy()
             loss_3d = loss_3d.cpu().detach().data.numpy()
-            """
-
-            pred_pc = net(rendering_images, init_point_clouds)
-            total_loss, update_pc = update_net.module.loss(update_images, pred_pc, ground_truth_point_clouds)
-            reconstruction_loss = total_loss.cpu().detach().data.numpy()
 
             # Append loss and accuracy to average metrics
             reconstruction_losses.update(reconstruction_loss)
-            # loss_2ds.update(loss_2d)
-            # loss_3ds.update(loss_3d)
+            loss_2ds.update(loss_2d)
+            loss_3ds.update(loss_3d)
 
             # Append generated point clouds to TensorBoard
-            if output_dir and sample_idx < 3:
+            if output_dir and sample_idx < 6:
                 
                 img_dir = output_dir % 'images'
                 sketch_dir = output_dir % 'sketchs'
@@ -148,7 +147,7 @@ def valid_net(cfg,
 
     if test_writer is not None:
         test_writer.add_scalar('Total/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx)
-        # test_writer.add_scalar('2D/EpochLoss_Loss_2D', loss_2ds.avg, epoch_idx)
-        # test_writer.add_scalar('3D/EpochLoss_Loss_3D', loss_3ds.avg, epoch_idx)
+        test_writer.add_scalar('2D/EpochLoss_Loss_2D', loss_2ds.avg, epoch_idx)
+        test_writer.add_scalar('3D/EpochLoss_Loss_3D', loss_3ds.avg, epoch_idx)
 
     return reconstruction_losses.avg

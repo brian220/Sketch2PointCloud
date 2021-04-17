@@ -25,7 +25,7 @@ from time import time
 from core.valid import valid_net
 from models.networks_psgn import Pixel2Pointcloud_PSGN_FC
 from models.networks_graphx import Pixel2Pointcloud_GRAPHX
-from models.updater import Updater
+from models.updater_multi_scale import Updater
 
 def train_net(cfg):
     print("cuda is available?", torch.cuda.is_available())
@@ -82,6 +82,7 @@ def train_net(cfg):
     
     # Updater network
     update_net = Updater(cfg=cfg,
+                         in_channels=3,
                          optimizer=lambda x: torch.optim.Adam(x, lr=cfg.UPDATER.LEARNING_RATE))
 
     if torch.cuda.is_available():
@@ -136,6 +137,7 @@ def train_net(cfg):
         n_batches = len(train_data_loader)
         for batch_idx, (taxonomy_names, sample_names, rendering_images, update_images,
                         model_gt, model_x, model_y,
+                        update_model_gt, update_model_x, update_model_y,
                         init_point_clouds, ground_truth_point_clouds) in enumerate(train_data_loader):
 
             # Measure data time
@@ -151,6 +153,9 @@ def train_net(cfg):
             model_gt = utils.network_utils.var_or_cuda(model_gt)
             model_x = utils.network_utils.var_or_cuda(model_x)
             model_y = utils.network_utils.var_or_cuda(model_y)
+            update_model_gt = utils.network_utils.var_or_cuda(update_model_gt)
+            update_model_x = utils.network_utils.var_or_cuda(update_model_x)
+            update_model_y = utils.network_utils.var_or_cuda(update_model_y)
             init_point_clouds = utils.network_utils.var_or_cuda(init_point_clouds)
             ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
             
@@ -158,32 +163,27 @@ def train_net(cfg):
             pred_pc = net(rendering_images, init_point_clouds)
 
             # update net update point cloud
-            total_loss = update_net.module.learn(update_images, pred_pc, ground_truth_point_clouds)
+            total_loss, loss_2d, loss_3d = update_net.module.learn(update_images, pred_pc, ground_truth_point_clouds, update_model_x, update_model_y, update_model_gt)
             
             reconstruction_losses.update(total_loss)
-            # loss_2ds.update(loss_2d)
-            # loss_3ds.update(loss_3d)
+            loss_2ds.update(loss_2d)
+            loss_3ds.update(loss_3d)
 
             # Tick / tock
             batch_time.update(time() - batch_end_time)
             batch_end_time = time()
-            """
+        
             print(
                 '[INFO] %s [Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) \
                  Total_loss = %.4f loss_2d = %.4f loss_3d = %.4f'
                 % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val,
                    data_time.val, total_loss, loss_2d, loss_3d))
-            """
-            print(
-                '[INFO] %s [Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) \
-                 Total_loss = %.4f'
-                % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val,
-                   data_time.val, total_loss))
+            break
            
         # Append epoch loss to TensorBoard
         train_writer.add_scalar('Total/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)
-        # train_writer.add_scalar('2D/EpochLoss_Loss_2D', loss_2ds.avg, epoch_idx + 1)
-        # train_writer.add_scalar('3D/EpochLoss_Loss_3D', loss_3ds.avg, epoch_idx + 1)
+        train_writer.add_scalar('2D/EpochLoss_Loss_2D', loss_2ds.avg, epoch_idx + 1)
+        train_writer.add_scalar('3D/EpochLoss_Loss_3D', loss_3ds.avg, epoch_idx + 1)
         
 
         # Validate the training models

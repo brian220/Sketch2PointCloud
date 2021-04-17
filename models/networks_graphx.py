@@ -84,7 +84,7 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
         if not self.cfg.SUPERVISION_2D.USE_2D_LOSS:
             loss_2d = torch.tensor(loss_2d)
 
-        # For edge 3d
+        # For 3d loss
         loss_3d = 0.
         if not self.cfg.SUPERVISION_3D.USE_3D_LOSS:
             loss_3d = torch.tensor(loss_3d)
