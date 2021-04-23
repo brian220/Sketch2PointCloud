@@ -24,6 +24,17 @@ import utils.view_pred_utils
 
 from datetime import datetime as dt
 
+idtodegree = [
+    [0, 0],
+    [45, 0],
+    [90, 0],
+    [135, 0],
+    [180, 0],
+    [225, 0],
+    [270, 0],
+    [325, 0]
+]
+
 def valid_net(cfg,
              epoch_idx=-1,
              output_dir=None,
@@ -45,7 +56,7 @@ def valid_net(cfg,
     update_net.eval()
 
     # Testing loop
-    for sample_idx, (taxonomy_names, sample_names, rendering_images, update_images,
+    for sample_idx, (taxonomy_names, sample_names, rendering_images, update_images, update_id,
                     model_gt, model_x, model_y,
                     update_model_gt, update_model_x, update_model_y,
                     init_point_clouds, ground_truth_point_clouds) in enumerate(test_data_loader):
@@ -71,7 +82,7 @@ def valid_net(cfg,
             #                Test the network                 #
             #=================================================#
             pred_pc = net(rendering_images, init_point_clouds)
-            total_loss, loss_2d, loss_3d, update_pc = update_net.module.loss(update_images, pred_pc, ground_truth_point_clouds, update_model_x, update_model_y, update_model_gt)
+            total_loss, loss_2d, loss_3d, update_pc = update_net.module.loss(update_images, update_id, pred_pc, ground_truth_point_clouds, update_model_x, update_model_y, update_model_gt)
             reconstruction_loss = total_loss.cpu().detach().data.numpy()
             loss_2d = loss_2d.cpu().detach().data.numpy()
             loss_3d = loss_3d.cpu().detach().data.numpy()
@@ -125,24 +136,26 @@ def valid_net(cfg,
                 save_image(u_img, u_img_path)
                 u_img = cv2.imread(u_img_path)
                 test_writer.add_image('Test Sample#%02d/Img Updated' % sample_idx, u_img, epoch_idx)
-
+                
+                # Plot in update view
+                update_view = idtodegree[update_id[0]]
                 # Predict Pointcloud
                 p_pc = pred_pc[0].detach().cpu().numpy()
                 rendering_views = utils.point_cloud_visualization.get_point_cloud_image(p_pc, os.path.join(img_dir, 'test'),
-                                                                                        sample_idx, epoch_idx, "reconstruction", view=[90, 0])
+                                                                                        sample_idx, epoch_idx, "reconstruction", view=update_view)
                 test_writer.add_image('Test Sample#%02d/Point Cloud Reconstructed' % sample_idx, rendering_views, epoch_idx)
                 
                 # Update Pointcloud
                 u_pc = update_pc[0].detach().cpu().numpy()
                 rendering_views = utils.point_cloud_visualization.get_point_cloud_image(u_pc, os.path.join(img_dir, 'test'),
-                                                                                        sample_idx, epoch_idx, "update", view=[90, 0])
+                                                                                        sample_idx, epoch_idx, "update", view=update_view)
                 test_writer.add_image('Test Sample#%02d/Point Cloud Updated' % sample_idx, rendering_views, epoch_idx)
                 
                 # Groundtruth Pointcloud
                 gt_pc = ground_truth_point_clouds[0].detach().cpu().numpy()
                 # ground_truth_view = ground_truth_views[0].detach().cpu().numpy()
                 rendering_views = utils.point_cloud_visualization.get_point_cloud_image(gt_pc, os.path.join(img_dir, 'test'),
-                                                                                        sample_idx, epoch_idx, "ground truth", view=[90, 0])
+                                                                                        sample_idx, epoch_idx, "ground truth", view=update_view)
                 test_writer.add_image('Test Sample#%02d/Point Cloud GroundTruth' % sample_idx, rendering_views, epoch_idx)
 
     if test_writer is not None:

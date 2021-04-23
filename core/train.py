@@ -135,7 +135,7 @@ def train_net(cfg):
 
         batch_end_time = time()
         n_batches = len(train_data_loader)
-        for batch_idx, (taxonomy_names, sample_names, rendering_images, update_images,
+        for batch_idx, (taxonomy_names, sample_names, rendering_images, update_images, update_id,
                         model_gt, model_x, model_y,
                         update_model_gt, update_model_x, update_model_y,
                         init_point_clouds, ground_truth_point_clouds) in enumerate(train_data_loader):
@@ -163,7 +163,7 @@ def train_net(cfg):
             pred_pc = net(rendering_images, init_point_clouds)
 
             # update net update point cloud
-            total_loss, loss_2d, loss_3d = update_net.module.learn(update_images, pred_pc, ground_truth_point_clouds, update_model_x, update_model_y, update_model_gt)
+            total_loss, loss_2d, loss_3d = update_net.module.learn(update_images, update_id, pred_pc, ground_truth_point_clouds, update_model_x, update_model_y, update_model_gt)
             
             reconstruction_losses.update(total_loss)
             loss_2ds.update(loss_2d)
@@ -178,7 +178,6 @@ def train_net(cfg):
                  Total_loss = %.4f loss_2d = %.4f loss_3d = %.4f'
                 % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val,
                    data_time.val, total_loss, loss_2d, loss_3d))
-            break
            
         # Append epoch loss to TensorBoard
         train_writer.add_scalar('Total/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)

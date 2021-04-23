@@ -93,7 +93,7 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         return len(self.file_list)
 
     def __getitem__(self, idx):
-        taxonomy_name, sample_name, rendering_images, update_images,\
+        taxonomy_name, sample_name, rendering_images, update_images, update_id, \
         model_gt, model_x, model_y, \
         update_model_gt, update_model_x, update_model_y, \
         init_point_cloud, ground_truth_point_cloud = self.get_datum(idx)
@@ -102,7 +102,7 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
             rendering_images = self.transforms(rendering_images)
             update_images = self.transforms(update_images)
 
-        return (taxonomy_name, sample_name, rendering_images, update_images,
+        return (taxonomy_name, sample_name, rendering_images, update_images, update_id,
                 model_gt, model_x, model_y, 
                 update_model_gt, update_model_x, update_model_y,
                 init_point_cloud, ground_truth_point_cloud)
@@ -142,8 +142,16 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
             sys.exit(2)
         rendering_images.append(rendering_image)
 
+        # get data of update images (sample 1 image from paths)
+        if self.dataset_type == DatasetType.TRAIN:
+            update_id = random.randint(0, len(update_image_paths) - 1)
+            selected_update_image_path = update_image_paths[update_id]
+        else:
+        # test, valid with the idx % 8 image
+            update_id = idx % 8
+            selected_update_image_path = update_image_paths[update_id]
+
         # read the update image, currently, use only one view to update (side view)
-        selected_update_image_path = update_image_paths[0]
         update_images = []
         update_image = cv2.imread(selected_update_image_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.
         update_image = cv2.cvtColor(update_image, cv2.COLOR_GRAY2RGB)
@@ -212,7 +220,7 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         update_model_x = np.array(update_model_x).astype(np.float32)
         update_model_y = np.array(update_model_y).astype(np.float32)
         
-        return (taxonomy_name, sample_name, rendering_images, update_images,
+        return (taxonomy_name, sample_name, rendering_images, update_images, update_id,
                 model_gt, model_x, model_y,
                 update_model_gt, update_model_x, update_model_y,
                 init_pointcloud_loader(self.init_num_points), ground_truth_point_cloud)
@@ -311,7 +319,7 @@ class ShapeNetDataLoader:
             update_image_indexes = range(self.update_views)
             update_image_file_paths = []
             for image_idx in update_image_indexes:
-                update_image_file_path = self.update_image_path_template % (taxonomy_folder_name, sample_name)
+                update_image_file_path = self.update_image_path_template % (taxonomy_folder_name, sample_name, image_idx)
                 if not os.path.exists(update_image_file_path):
                     continue
                 update_image_file_paths.append(update_image_file_path)
@@ -339,7 +347,7 @@ class ShapeNetDataLoader:
             update_depth_image_indexes = range(self.update_depth_views)
             update_depth_image_file_paths = []
             for image_idx in update_depth_image_indexes:
-                update_depth_image_file_path = self.update_depth_image_path_template % (taxonomy_folder_name, sample_name)
+                update_depth_image_file_path = self.update_depth_image_path_template % (taxonomy_folder_name, sample_name, image_idx)
                 if not os.path.exists(update_depth_image_file_path):
                     continue
                 update_depth_image_file_paths.append(update_depth_image_file_path)

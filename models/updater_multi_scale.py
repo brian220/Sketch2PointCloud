@@ -114,12 +114,24 @@ class TransformPC(nn.Module):
         self.cfg = cfg
         self.n_pts = cfg.CONST.NUM_POINTS
     
-    def forward(self, xyz, az, el):
+    def forward(self, xyz, az, el, update_id):
+        # Because there may be different update_id in a same batch
+        # Here separate the batch data and compute transform pc one by one
         batch_size = xyz.size(0)
-        xyz_out = self.world2cam(xyz, az, el, batch_size=batch_size, N_PTS=self.n_pts)
-        return xyz_out
+        batch_xyz_out = []
+        for batch_id in range(batch_size):
+            single_xyz = xyz[batch_id].unsqueeze(0)
+            single_update_id = update_id[batch_id]
+            single_az = az[batch_id].unsqueeze(0)
+            single_el = el[batch_id].unsqueeze(0)
 
-    def world2cam(self, xyz, az, el, batch_size, N_PTS=1024):
+            xyz_out = self.world2cam(single_xyz, single_az[:,single_update_id], single_el[:,single_update_id], N_PTS=self.n_pts)
+            batch_xyz_out.append(xyz_out.squeeze(0))
+        
+        batch_xyz_out = torch.stack(batch_xyz_out)
+        return batch_xyz_out
+
+    def world2cam(self, xyz, az, el, N_PTS=1024):
         # y ---> x
         rotmat_az=[
                     [torch.cos(az),torch.sin(az),torch.zeros_like(az)],
@@ -148,7 +160,7 @@ class TransformPC(nn.Module):
         # Calculate translation params
         tx, ty, tz = [0, 0, d]
         
-        tr_mat = torch.unsqueeze(torch.tensor([tx, ty, tz]), 0).repeat(batch_size,1) # [B,3]
+        tr_mat = torch.unsqueeze(torch.tensor([tx, ty, tz]), 0).repeat(1,1) # [B,3]
         tr_mat = torch.unsqueeze(tr_mat,2) # [B,3,1]
         tr_mat = tr_mat.permute(0, 2, 1) # [B,1,3]
         tr_mat = tr_mat.repeat(1, N_PTS, 1) # [B,1024,3]
@@ -361,9 +373,9 @@ class Updater(nn.Module):
             self.emd = torch.nn.DataParallel(self.emd, device_ids=cfg.CONST.DEVICE).cuda()
             self.cuda()
 
-    def forward(self, img, xyz, view_az, view_el):
+    def forward(self, img, update_id, xyz, view_az, view_el):
         img_features = self.img_enc(img)
-        transform_xyz = self.transform_pc(xyz, view_az[:,0], view_el[:,0])
+        transform_xyz = self.transform_pc(xyz, view_az, view_el, update_id)
         proj_features = self.feature_projection(img_features, transform_xyz)
         pc_features = self.pointnet2(transform_xyz)
         noises = torch.normal(mean=0.0, std=1, size=(self.cfg.CONST.BATCH_SIZE, self.cfg.CONST.NUM_POINTS, self.cfg.UPDATER.NOISE_LENGTH))
@@ -373,8 +385,8 @@ class Updater(nn.Module):
 
         return refine_pc
 
-    def loss(self, img, xyz, gt_pc, view_az, view_el, update_proj_gt):
-        refine_pc = self(img, xyz, view_az, view_el)
+    def loss(self, img, update_id, xyz, gt_pc, view_az, view_el, update_proj_gt):
+        refine_pc = self(img, update_id, xyz, view_az, view_el)
 
         if self.cfg.SUPERVISION_2D.USE_AFFINITY:
            grid_dist_np = grid_dist(grid_h=self.cfg.PROJECTION.GRID_H, grid_w=self.cfg.PROJECTION.GRID_W).astype(np.float32)
@@ -430,10 +442,10 @@ class Updater(nn.Module):
 
         return total_loss, (loss_2d/self.cfg.PROJECTION.UPDATE_NUM_VIEWS), loss_3d, refine_pc
 
-    def learn(self, img, xyz, gt_pc, view_az, view_el, update_proj_gt):
+    def learn(self, img, update_id, xyz, gt_pc, view_az, view_el, update_proj_gt):
         self.train(True)
         self.optimizer.zero_grad()
-        total_loss, loss_2d, loss_3d, _ = self.loss(img, xyz, gt_pc, view_az, view_el, update_proj_gt)
+        total_loss, loss_2d, loss_3d, _ = self.loss(img, update_id, xyz, gt_pc, view_az, view_el, update_proj_gt)
         total_loss.backward()
         self.optimizer.step()
         total_loss_np = total_loss.detach().item()
