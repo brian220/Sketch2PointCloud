@@ -126,12 +126,12 @@ class Pixel2Pointcloud_GRAPHX(nn.Module):
         elif self.cfg.SUPERVISION_3D.USE_3D_LOSS:
             total_loss = loss_3d
             
-        return total_loss, (loss_2d/self.cfg.PROJECTION.NUM_VIEWS), loss_3d, pred_pc, proj_pred, proj_gt, point_gt
+        return total_loss, (loss_2d/self.cfg.PROJECTION.NUM_VIEWS), loss_3d, pred_pc
 
     def learn(self, input, init_pc, gt_pc, view_az, view_el, proj_gt):
         self.train(True)
         self.optimizer.zero_grad()
-        total_loss, loss_2d, loss_3d, _, _, _, _ = self.loss(input, init_pc, gt_pc, view_az, view_el, proj_gt)
+        total_loss, loss_2d, loss_3d, _ = self.loss(input, init_pc, gt_pc, view_az, view_el, proj_gt)
         total_loss.backward()
         self.optimizer.step()
         total_loss_np = total_loss.detach().item()

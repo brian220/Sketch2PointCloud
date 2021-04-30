@@ -33,8 +33,8 @@ def init_pointcloud_loader(num_points):
     Z = np.random.rand(num_points) + 1.
     h = np.random.uniform(10., 214., size=(num_points,))
     w = np.random.uniform(10., 214., size=(num_points,))
-    X = (w - 111.5) / 420. * abs(Z)
-    Y = (h - 111.5) / 420. * abs(Z)
+    X = (w - 111.5) / 248. * -Z # focal length: 60
+    Y = (h - 111.5) / 248. * Z
     X = np.reshape(X, (-1, 1))
     Y = np.reshape(Y, (-1, 1))
     Z = np.reshape(Z, (-1, 1))
@@ -78,11 +78,12 @@ def np_rotate(xyz, xangle=0, yangle=0, inverse=False):
 
 class ShapeNetDataset(torch.utils.data.dataset.Dataset):
     """ShapeNetDataset class used for PyTorch DataLoader"""
-    def __init__(self, dataset_type, file_list, init_num_points, proj_num_views, grid_h, grid_w, rec_model, transforms=None):
+    def __init__(self, dataset_type, file_list, init_num_points, proj_num_views, update_proj_num_views, grid_h, grid_w, rec_model, transforms=None):
         self.dataset_type = dataset_type
         self.file_list = file_list
         self.init_num_points = init_num_points
         self.proj_num_views = proj_num_views
+        self.update_proj_num_views = update_proj_num_views
         self.rec_model = rec_model
         self.grid_h = grid_h
         self.grid_w = grid_w
@@ -92,15 +93,18 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         return len(self.file_list)
 
     def __getitem__(self, idx):
-        taxonomy_name, sample_name, rendering_images, \
+        taxonomy_name, sample_name, rendering_images, update_images, update_id, \
         model_gt, model_x, model_y, \
+        update_model_gt, update_model_x, update_model_y, \
         init_point_cloud, ground_truth_point_cloud = self.get_datum(idx)
 
         if self.transforms:
             rendering_images = self.transforms(rendering_images)
+            update_images = self.transforms(update_images)
 
-        return (taxonomy_name, sample_name, rendering_images,
-                model_gt, model_x, model_y,
+        return (taxonomy_name, sample_name, rendering_images, update_images, update_id,
+                model_gt, model_x, model_y, 
+                update_model_gt, update_model_x, update_model_y,
                 init_point_cloud, ground_truth_point_cloud)
 
     def get_datum(self, idx):
@@ -111,6 +115,11 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         depth_image_paths = self.file_list[idx]['depth_images']
         radian_x = self.file_list[idx]['radian_x']
         radian_y = self.file_list[idx]['radian_y']
+        
+        update_image_paths = self.file_list[idx]['update_images']
+        update_depth_image_paths = self.file_list[idx]['update_depth_images']
+        update_radian_x = self.file_list[idx]['update_radian_x']
+        update_radian_y = self.file_list[idx]['update_radian_y']
 
         ground_truth_point_cloud_path = self.file_list[idx]['point_cloud']
         
@@ -133,6 +142,26 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
             sys.exit(2)
         rendering_images.append(rendering_image)
 
+        # get data of update images (sample 1 image from paths)
+        if self.dataset_type == DatasetType.TRAIN:
+            update_id = random.randint(0, len(update_image_paths) - 1)
+            selected_update_image_path = update_image_paths[update_id]
+        else:
+        # test, valid with the idx % 8 image
+            update_id = idx % 8
+            selected_update_image_path = update_image_paths[update_id]
+
+        # read the update image, currently, use only one view to update (side view)
+        update_images = []
+        update_image = cv2.imread(selected_update_image_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.
+        update_image = cv2.cvtColor(update_image, cv2.COLOR_GRAY2RGB)
+
+        if len(update_image.shape) < 3:
+            print('[FATAL] %s It seems that there is something wrong with the update image file %s' %
+                     (dt.now(), selected_update_image_path))
+            sys.exit(2)
+        update_images.append(update_image)
+
         # read the ground truth proj images and views (multi-views)
         model_gt = []
         model_x = []
@@ -151,6 +180,25 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
             # read the views
             model_x.append(radian_x[idx])
             model_y.append(radian_y[idx])
+
+        # read the ground truth update proj images and views (single-view)
+        update_model_gt = []
+        update_model_x = []
+        update_model_y = []
+        for idx in range(0, self.update_proj_num_views):
+            # read the proj imgs
+            update_proj_path = update_depth_image_paths[idx]
+            update_ip_proj = cv2.imread(update_proj_path)[:,:,0]
+            update_ip_proj = cv2.resize(update_ip_proj, (self.grid_h,self.grid_w))
+            update_ip_proj[update_ip_proj<254] = 1
+            update_ip_proj[update_ip_proj>=254] = 0
+
+            update_ip_proj = update_ip_proj.astype(np.float32)
+            update_model_gt.append(update_ip_proj)
+
+            # read the views
+            update_model_x.append(update_radian_x[idx])
+            update_model_y.append(update_radian_y[idx])
         
         # get data of point cloud
         _, suffix = os.path.splitext(ground_truth_point_cloud_path)
@@ -164,12 +212,17 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
 
         # convert to np array
         rendering_images = np.array(rendering_images).astype(np.float32)
+        update_images = np.array(update_images).astype(np.float32)
         model_gt = np.array(model_gt).astype(np.float32)
         model_x = np.array(model_x).astype(np.float32)
         model_y = np.array(model_y).astype(np.float32)
+        update_model_gt = np.array(update_model_gt).astype(np.float32)
+        update_model_x = np.array(update_model_x).astype(np.float32)
+        update_model_y = np.array(update_model_y).astype(np.float32)
         
-        return (taxonomy_name, sample_name, rendering_images,
+        return (taxonomy_name, sample_name, rendering_images, update_images, update_id,
                 model_gt, model_x, model_y,
+                update_model_gt, update_model_x, update_model_y,
                 init_pointcloud_loader(self.init_num_points), ground_truth_point_cloud)
 # //////////////////////////////// = End of ShapeNetDataset Class Definition = ///////////////////////////////// #
 
@@ -185,6 +238,14 @@ class ShapeNetDataLoader:
         self.rendering_image_path_template = cfg.DATASETS.SHAPENET.RENDERING_PATH
         self.depth_image_path_template = cfg.DATASETS.SHAPENET.DEPTH_PATH
         self.view_path_template = cfg.DATASETS.SHAPENET.VIEW_PATH
+        
+        # update
+        self.update_views = cfg.DATASET.UPDATE_VIEWS
+        self.update_depth_views = cfg.DATASET.UPDATE_DEPTH_VIEWS
+        self.update_proj_num_views = cfg.PROJECTION.UPDATE_NUM_VIEWS
+        self.update_image_path_template = cfg.DATASETS.SHAPENET.UPDATE_PATH
+        self.update_depth_image_path_template = cfg.DATASETS.SHAPENET.UPDATE_DEPTH_PATH
+        self.update_view_path_template = cfg.DATASETS.SHAPENET.UPDATE_VIEW_PATH
 
         self.point_cloud_path_template = cfg.DATASETS.SHAPENET.POINT_CLOUD_PATH
         
@@ -219,7 +280,7 @@ class ShapeNetDataLoader:
 
         print('[INFO] %s Complete collecting files of the dataset. Total files: %d.' % (dt.now(), len(files)))
         return ShapeNetDataset(dataset_type, files, self.init_num_points, 
-                               self.proj_num_views,
+                               self.proj_num_views, self.update_proj_num_views, 
                                self.grid_h, self.grid_w, self.rec_model, transforms)
         
     def get_files_of_taxonomy(self, taxonomy_folder_name, samples):
@@ -254,6 +315,20 @@ class ShapeNetDataLoader:
                       (dt.now(), taxonomy_folder_name, sample_name))
                 continue
             
+            # Get file list of update view images
+            update_image_indexes = range(self.update_views)
+            update_image_file_paths = []
+            for image_idx in update_image_indexes:
+                update_image_file_path = self.update_image_path_template % (taxonomy_folder_name, sample_name, image_idx)
+                if not os.path.exists(update_image_file_path):
+                    continue
+                update_image_file_paths.append(update_image_file_path)
+            
+            if len(update_image_file_paths) == 0:
+                print('[WARN] %s Ignore sample %s/%s since update image files not exists.' %
+                      (dt.now(), taxonomy_folder_name, sample_name))
+                continue
+            
             # Get file list of depth images
             depth_image_indexes = range(self.depth_views)
             depth_image_file_paths = []
@@ -265,6 +340,20 @@ class ShapeNetDataLoader:
 
             if len(depth_image_file_paths) == 0:
                 print('[WARN] %s Ignore sample %s/%s since depth files not exists.' %
+                      (dt.now(), taxonomy_folder_name, sample_name))
+                continue
+
+            # Get file list of update depth images
+            update_depth_image_indexes = range(self.update_depth_views)
+            update_depth_image_file_paths = []
+            for image_idx in update_depth_image_indexes:
+                update_depth_image_file_path = self.update_depth_image_path_template % (taxonomy_folder_name, sample_name, image_idx)
+                if not os.path.exists(update_depth_image_file_path):
+                    continue
+                update_depth_image_file_paths.append(update_depth_image_file_path)
+            
+            if len(update_depth_image_file_paths) == 0:
+                print('[WARN] %s Ignore sample %s/%s since update depth files not exists.' %
                       (dt.now(), taxonomy_folder_name, sample_name))
                 continue
 
@@ -287,6 +376,26 @@ class ShapeNetDataLoader:
                 # convert angles to radians
                 radian_x.append(angle_x*np.pi/180.)
                 radian_y.append((angle_y - 90.)*np.pi/180.) # original model face direction: z, change to x
+            
+            # Get update views of objects (azimuth, elevation)
+            update_view_path = self.update_view_path_template % (taxonomy_folder_name, sample_name)
+            if not os.path.exists(update_view_path):
+                print('[WARN] %s Ignore sample %s/%s since update view file not exists.' %
+                      (dt.now(), taxonomy_folder_name, sample_name))
+                continue
+            
+            update_angles = []
+            with open(update_view_path) as f:
+                update_angles = [item.split('\n')[0] for item in f.readlines()]
+            
+            update_radian_x = [] # azi
+            update_radian_y = [] # ele
+            for update_angle in update_angles:
+                update_angle_x = float(update_angle.split(' ')[0])
+                update_angle_y = float(update_angle.split(' ')[1])
+                # convert angles to radians
+                update_radian_x.append(update_angle_x*np.pi/180.)
+                update_radian_y.append((update_angle_y - 90.)*np.pi/180.) # original model face direction: z, change to x
 
             # Append to the list of rendering images
             files_of_taxonomy.append({
@@ -296,6 +405,10 @@ class ShapeNetDataLoader:
                 'depth_images' : depth_image_file_paths,
                 'radian_x' : radian_x,
                 'radian_y' : radian_y,
+                'update_images': update_image_file_paths,
+                'update_depth_images' : update_depth_image_file_paths,
+                'update_radian_x' : update_radian_x,
+                'update_radian_y' : update_radian_y,
                 'point_cloud': point_cloud_file_path,
             })
 
