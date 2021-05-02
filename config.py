@@ -14,15 +14,15 @@ __C.DATASETS                                = edict()
 __C.DATASETS.SHAPENET                       = edict()
 __C.DATASETS.SHAPENET.TAXONOMY_FILE_PATH    = './datasets/rec.json'
 
-__C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/graphx_data/%s/%s/%02d.png'
-__C.DATASETS.SHAPENET.DEPTH_PATH            = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_sketch/%s/%s/depth_%d.png'
+__C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/sketch_24_view/%s/%s/render_%d.png'
+__C.DATASETS.SHAPENET.DEPTH_PATH            = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/sketch_24_view/%s/%s/depth_%d.png'
 __C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/shape_net_core_uniform_samples_2048/%s/%s.ply'
-__C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/capnet_data/data/ShapeNet_sketch/%s/%s/view.txt'
+__C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/sketch_24_view/%s/%s/view.txt'
 __C.DATASETS.SHAPENET.HAND_DRAW_IMG_PATH    = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/hand_draw_img'
 
-__C.DATASETS.SHAPENET.UPDATE_PATH           = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/sketch_eight_view/%s/%s/render_%d.png'
-__C.DATASETS.SHAPENET.UPDATE_DEPTH_PATH     = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/sketch_eight_view/%s/%s/depth_%d.png'
-__C.DATASETS.SHAPENET.UPDATE_VIEW_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/sketch_eight_view/%s/%s/view.txt'
+# __C.DATASETS.SHAPENET.UPDATE_PATH           = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/sketch_eight_view/%s/%s/render_%d.png'
+# __C.DATASETS.SHAPENET.UPDATE_DEPTH_PATH     = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/sketch_eight_view/%s/%s/depth_%d.png'
+# __C.DATASETS.SHAPENET.UPDATE_VIEW_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/sketch_eight_view/%s/%s/view.txt'
 
 #
 # Dataset
@@ -31,8 +31,8 @@ __C.DATASET                                 = edict()
 __C.DATASET.RENDER_VIEWS                    = 24
 __C.DATASET.DEPTH_VIEWS                     = 10
 
-__C.DATASET.UPDATE_VIEWS                    = 8
-__C.DATASET.UPDATE_DEPTH_VIEWS              = 8
+# __C.DATASET.UPDATE_VIEWS                    = 8
+# __C.DATASET.UPDATE_DEPTH_VIEWS              = 8
 
 __C.DATASET.MEAN                            = [0.5, 0.5, 0.5]
 __C.DATASET.STD                             = [0.5, 0.5, 0.5]
@@ -49,7 +49,7 @@ __C.CONST.DEVICE_NUM                        = 1
 __C.CONST.RNG_SEED                          = 0
 __C.CONST.IMG_W                             = 224       # Image width for input
 __C.CONST.IMG_H                             = 224       # Image height for input
-__C.CONST.BATCH_SIZE                        = 1
+__C.CONST.BATCH_SIZE                        = 8
 __C.CONST.BIN_SIZE                          = 15
 __C.CONST.NUM_POINTS                        = 2048
 __C.CONST.WEIGHTS                           = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v1/checkpoints/best-reconstruction-ckpt.pth'
@@ -121,9 +121,9 @@ __C.PROJECTION.LAMDA_AFF_BWD               = 1.
 # Training
 #
 __C.TRAIN                                   = edict()
-__C.TRAIN.RESUME_TRAIN                      = True
+__C.TRAIN.RESUME_TRAIN                      = False
 __C.TRAIN.NUM_WORKER                        = 4             # number of data workers
-__C.TRAIN.NUM_EPOCHES                       = 1100
+__C.TRAIN.NUM_EPOCHES                       = 1000
 __C.TRAIN.BRIGHTNESS                        = .4
 __C.TRAIN.CONTRAST                          = .4
 __C.TRAIN.SATURATION                        = .4

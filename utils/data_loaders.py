@@ -29,12 +29,26 @@ class DatasetType(Enum):
 # //////////////////////////////// = End of DatasetType Class Definition = ///////////////////////////////// #
 
 
+"""
 def init_pointcloud_loader(num_points):
     Z = np.random.rand(num_points) + 1.
     h = np.random.uniform(10., 214., size=(num_points,))
     w = np.random.uniform(10., 214., size=(num_points,))
     X = (w - 111.5) / 420. * abs(Z)
     Y = (h - 111.5) / 420. * abs(Z)
+    X = np.reshape(X, (-1, 1))
+    Y = np.reshape(Y, (-1, 1))
+    Z = np.reshape(Z, (-1, 1))
+    XYZ = np.concatenate((X, Y, Z), 1)
+    return XYZ.astype('float32')
+"""
+
+def init_pointcloud_loader(num_points):
+    Z = np.random.rand(num_points) + 2.
+    h = np.random.uniform(10., 214., size=(num_points,))
+    w = np.random.uniform(10., 214., size=(num_points,))
+    X = (w - 111.5) / 420. * -Z # focal length: 60
+    Y = (h - 111.5) / 420. * Z
     X = np.reshape(X, (-1, 1))
     Y = np.reshape(Y, (-1, 1))
     Z = np.reshape(Z, (-1, 1))
