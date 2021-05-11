@@ -129,8 +129,8 @@ class PointCloudEncoder(nn.Module):
     def get_projection(self, img_feat, pc):
         _, _, h_, w_ = tuple(img_feat.shape)
         X, Y, Z = pc[..., 0], pc[..., 1], pc[..., 2]
-        h = 420. * Y / Z + 111.5
-        w = 420. * -X / Z + 111.5
+        h = 248. * Y / Z + 111.5
+        w = 248. * -X / Z + 111.5
         h = torch.clamp(h, 0., 223.)
         w = torch.clamp(w, 0., 223.)
 

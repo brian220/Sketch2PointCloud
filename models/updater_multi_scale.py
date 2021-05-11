@@ -4,12 +4,9 @@ import torch.nn.functional as F
 import torchvision.models
 import os
 
-from models.projection import Projector
-
 import utils.network_utils
 from utils.pointnet2_utils import PointNetSetAbstraction,PointNetFeaturePropagation
 
-from losses.proj_losses import *
 from losses.earth_mover_distance import EMD
 
 # Set the path for pretrain weight
@@ -114,24 +111,12 @@ class TransformPC(nn.Module):
         self.cfg = cfg
         self.n_pts = cfg.CONST.NUM_POINTS
     
-    def forward(self, xyz, az, el, update_id):
-        # Because there may be different update_id in a same batch
-        # Here separate the batch data and compute transform pc one by one
+    def forward(self, xyz, az, el):
         batch_size = xyz.size(0)
-        batch_xyz_out = []
-        for batch_id in range(batch_size):
-            single_xyz = xyz[batch_id].unsqueeze(0)
-            single_update_id = update_id[batch_id]
-            single_az = az[batch_id].unsqueeze(0)
-            single_el = el[batch_id].unsqueeze(0)
+        cam_xyz = self.world2cam(xyz, az, el, batch_size, N_PTS=self.n_pts)
+        return cam_xyz
 
-            xyz_out = self.world2cam(single_xyz, single_az[:,single_update_id], single_el[:,single_update_id], N_PTS=self.n_pts)
-            batch_xyz_out.append(xyz_out.squeeze(0))
-        
-        batch_xyz_out = torch.stack(batch_xyz_out)
-        return batch_xyz_out
-
-    def world2cam(self, xyz, az, el, N_PTS=1024):
+    def world2cam(self, xyz, az, el, batch_size, N_PTS=1024):
         # y ---> x
         rotmat_az=[
                     [torch.cos(az),torch.sin(az),torch.zeros_like(az)],
@@ -160,11 +145,11 @@ class TransformPC(nn.Module):
         # Calculate translation params
         tx, ty, tz = [0, 0, d]
         
-        tr_mat = torch.unsqueeze(torch.tensor([tx, ty, tz]), 0).repeat(1,1) # [B,3]
+        tr_mat = torch.unsqueeze(torch.tensor([tx, ty, tz]), 0).repeat(batch_size, 1) # [B,3]
         tr_mat = torch.unsqueeze(tr_mat,2) # [B,3,1]
         tr_mat = tr_mat.permute(0, 2, 1) # [B,1,3]
-        tr_mat = tr_mat.repeat(1, N_PTS, 1) # [B,1024,3]
-        tr_mat = utils.network_utils.var_or_cuda(tr_mat) # [B,1024,3]
+        tr_mat = tr_mat.repeat(1, N_PTS, 1) # [B,N_PTS,3]
+        tr_mat = utils.network_utils.var_or_cuda(tr_mat) # [B,N_PTS,3]
 
         xyz_out = torch.matmul(rotmat, xyz.permute(0, 2, 1)) - tr_mat.permute(0, 2, 1)
 
@@ -353,12 +338,6 @@ class Updater(nn.Module):
 
         self.optimizer = None if optimizer is None else optimizer(self.parameters())
         
-        # 2D supervision part
-        self.projector = Projector(self.cfg)
-
-        # proj loss
-        self.proj_loss = ProjectLoss(self.cfg)
-        
         # emd loss
         self.emd = EMD()
 
@@ -368,14 +347,12 @@ class Updater(nn.Module):
             self.feature_projection = torch.nn.DataParallel(self.feature_projection, device_ids=cfg.CONST.DEVICE).cuda()
             self.pointnet2 = torch.nn.DataParallel(self.pointnet2, device_ids=cfg.CONST.DEVICE).cuda()
             self.displacement_net = torch.nn.DataParallel(self.displacement_net, device_ids=cfg.CONST.DEVICE).cuda()
-            self.projector = torch.nn.DataParallel(self.projector, device_ids=cfg.CONST.DEVICE).cuda()
-            self.proj_loss = torch.nn.DataParallel(self.proj_loss, device_ids=cfg.CONST.DEVICE).cuda()
             self.emd = torch.nn.DataParallel(self.emd, device_ids=cfg.CONST.DEVICE).cuda()
             self.cuda()
 
-    def forward(self, img, update_id, xyz, view_az, view_el):
+    def forward(self, img, xyz, view_az, view_el):
         img_features = self.img_enc(img)
-        transform_xyz = self.transform_pc(xyz, view_az, view_el, update_id)
+        transform_xyz = self.transform_pc(xyz, view_az, view_el)
         proj_features = self.feature_projection(img_features, transform_xyz)
         pc_features = self.pointnet2(transform_xyz)
         noises = torch.normal(mean=0.0, std=1, size=(self.cfg.CONST.BATCH_SIZE, self.cfg.CONST.NUM_POINTS, self.cfg.UPDATER.NOISE_LENGTH))
@@ -385,71 +362,21 @@ class Updater(nn.Module):
 
         return refine_pc
 
-    def loss(self, img, update_id, xyz, gt_pc, view_az, view_el, update_proj_gt):
-        refine_pc = self(img, update_id, xyz, view_az, view_el)
-
-        if self.cfg.SUPERVISION_2D.USE_AFFINITY:
-           grid_dist_np = grid_dist(grid_h=self.cfg.PROJECTION.GRID_H, grid_w=self.cfg.PROJECTION.GRID_W).astype(np.float32)
-           grid_dist_tensor = utils.network_utils.var_or_cuda(torch.from_numpy(grid_dist_np))
-        else:
-           grid_dist_tensor = None
+    def loss(self, img, xyz, gt_pc, view_az, view_el):
+        refine_pc = self(img, xyz, view_az, view_el)
         
-        # Use 2D projection loss to train
-        proj_pred = {}
-        point_gt = {}
-        loss_bce = {}
-        fwd = {}
-        bwd = {}
-        loss_fwd = {}
-        loss_bwd = {}
-        loss_2d = 0.
-        if not self.cfg.SUPERVISION_2D.USE_2D_LOSS:
-            loss_2d = torch.tensor(loss_2d)
+        # EMD
+        loss = torch.mean(self.emd(refine_pc, gt_pc))
 
-        # For 3d loss
-        loss_3d = 0.
-        if not self.cfg.SUPERVISION_3D.USE_3D_LOSS:
-            loss_3d = torch.tensor(loss_3d)
+        return loss, refine_pc
 
-        # for continous 2d supervision
-        if self.cfg.SUPERVISION_2D.USE_2D_LOSS and self.cfg.SUPERVISION_2D.PROJ_TYPE == 'CONT':
-            for idx in range(0, self.cfg.PROJECTION.UPDATE_NUM_VIEWS):
-                proj_pred[idx] = self.projector(refine_pc, view_az[:,idx], view_el[:,idx])
-                loss_bce[idx], fwd[idx], bwd[idx] = self.proj_loss(preds=proj_pred[idx], gts=update_proj_gt[:,idx], grid_dist_tensor=grid_dist_tensor)
-                loss_fwd[idx] = 1e-4 * torch.mean(fwd[idx])
-                loss_bwd[idx] = 1e-4 * torch.mean(bwd[idx])
-
-                if self.cfg.SUPERVISION_2D.USE_AFFINITY:
-                    loss_2d += self.cfg.PROJECTION.LAMDA_BCE * torch.mean(loss_bce[idx]) +\
-                               self.cfg.PROJECTION.LAMDA_AFF_FWD * loss_fwd[idx] +\
-                               self.cfg.PROJECTION.LAMDA_AFF_BWD * loss_bwd[idx]
-                else:
-                    loss_2d += self.cfg.PROJECTION.LAMDA_BCE * torch.mean(loss_bce[idx])
-        
-        # for 3d supervision (EMD)
-        loss_3d = torch.mean(self.emd(refine_pc, gt_pc))
-
-        # Total loss
-        if self.cfg.SUPERVISION_2D.USE_2D_LOSS and self.cfg.SUPERVISION_3D.USE_3D_LOSS:
-            total_loss = self.cfg.SUPERVISION_2D.LAMDA_2D_LOSS * (loss_2d/self.cfg.PROJECTION.UPDATE_NUM_VIEWS) +\
-                         self.cfg.SUPERVISION_3D.LAMDA_3D_LOSS * loss_3d
-
-        elif self.cfg.SUPERVISION_2D.USE_2D_LOSS:
-            total_loss = loss_2d / self.cfg.PROJECTION.UPDATE_NUM_VIEWS
-
-        elif self.cfg.SUPERVISION_3D.USE_3D_LOSS:
-            total_loss = loss_3d
-
-        return total_loss, (loss_2d/self.cfg.PROJECTION.UPDATE_NUM_VIEWS), loss_3d, refine_pc
-
-    def learn(self, img, update_id, xyz, gt_pc, view_az, view_el, update_proj_gt):
+    def learn(self, img, xyz, gt_pc, view_az, view_el):
         self.train(True)
         self.optimizer.zero_grad()
-        total_loss, loss_2d, loss_3d, _ = self.loss(img, update_id, xyz, gt_pc, view_az, view_el, update_proj_gt)
-        total_loss.backward()
+        loss, _ = self.loss(img, xyz, gt_pc, view_az, view_el)
+        loss.backward()
         self.optimizer.step()
-        total_loss_np = total_loss.detach().item()
-        loss_2d_np = loss_2d.detach().item()
-        loss_3d_np = loss_3d.detach().item()
-        del total_loss, loss_2d, loss_3d
-        return total_loss_np, loss_2d_np, loss_3d_np
+        loss_np = loss.detach().item()
+
+        del loss
+        return loss_np

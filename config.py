@@ -14,10 +14,9 @@ __C.DATASETS                                = edict()
 __C.DATASETS.SHAPENET                       = edict()
 __C.DATASETS.SHAPENET.TAXONOMY_FILE_PATH    = './datasets/rec.json'
 
-__C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/sketch_24_view/%s/%s/render_%d.png'
-__C.DATASETS.SHAPENET.DEPTH_PATH            = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/sketch_24_view/%s/%s/depth_%d.png'
+__C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/sketch_24_view_up/%s/%s/render_%d.png'
 __C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/shape_net_core_uniform_samples_2048/%s/%s.ply'
-__C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/sketch_24_view/%s/%s/view.txt'
+__C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/sketch_24_view_up/%s/%s/view.txt'
 __C.DATASETS.SHAPENET.HAND_DRAW_IMG_PATH    = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/hand_draw_img'
 
 # __C.DATASETS.SHAPENET.UPDATE_PATH           = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/sketch_eight_view/%s/%s/render_%d.png'
@@ -29,10 +28,6 @@ __C.DATASETS.SHAPENET.HAND_DRAW_IMG_PATH    = '/media/caig/FECA2C89CA2C406F/sket
 #
 __C.DATASET                                 = edict()
 __C.DATASET.RENDER_VIEWS                    = 24
-__C.DATASET.DEPTH_VIEWS                     = 10
-
-# __C.DATASET.UPDATE_VIEWS                    = 8
-# __C.DATASET.UPDATE_DEPTH_VIEWS              = 8
 
 __C.DATASET.MEAN                            = [0.5, 0.5, 0.5]
 __C.DATASET.STD                             = [0.5, 0.5, 0.5]
@@ -49,10 +44,10 @@ __C.CONST.DEVICE_NUM                        = 1
 __C.CONST.RNG_SEED                          = 0
 __C.CONST.IMG_W                             = 224       # Image width for input
 __C.CONST.IMG_H                             = 224       # Image height for input
-__C.CONST.BATCH_SIZE                        = 8
+__C.CONST.BATCH_SIZE                        = 4
 __C.CONST.BIN_SIZE                          = 15
 __C.CONST.NUM_POINTS                        = 2048
-__C.CONST.WEIGHTS                           = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v1/checkpoints/best-reconstruction-ckpt.pth'
+__C.CONST.WEIGHTS                           = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v20/checkpoints/best-rec-ckpt.pth'
 
 #
 # Directories
@@ -85,45 +80,14 @@ __C.UPDATER.RANGE_MAX                     = 0.2
 __C.UPDATER.LEARNING_RATE                 = 1e-3
 __C.UPDATER.NOISE_LENGTH                  = 32
 
-#
-# 2d supervision
-#
-__C.SUPERVISION_2D                         = edict()
-__C.SUPERVISION_2D.LOSS_TYPE               = 'bce_prob'
-__C.SUPERVISION_2D.PROJ_TYPE               = 'CONT' #CONT: continuous projection, DISC: discrete projection      
-__C.SUPERVISION_2D.USE_AFFINITY            = True
-__C.SUPERVISION_2D.USE_2D_LOSS             = False
-__C.SUPERVISION_2D.LAMDA_2D_LOSS           = 1.
-
-#
-# 3d supervision
-#
-__C.SUPERVISION_3D                         = edict()
-__C.SUPERVISION_3D.USE_3D_LOSS             = True
-__C.SUPERVISION_3D.LAMDA_3D_LOSS           = 1.
-
-#
-# Continuous Projection
-#
-__C.PROJECTION                             = edict()
-__C.PROJECTION.GRID_H                      = 64
-__C.PROJECTION.GRID_W                      = 64
-__C.PROJECTION.SIGMA_SQ_DISC               = 0.5
-__C.PROJECTION.SIGMA_SQ_CONT               = 0.4
-__C.PROJECTION.NUM_VIEWS                   = 3
-__C.PROJECTION.UPDATE_NUM_VIEWS            = 8 #!!
-# __C.PROJECTION.NUM_VIEWS                   = 1 # only for test time optimization
-__C.PROJECTION.LAMDA_BCE                   = 1.
-__C.PROJECTION.LAMDA_AFF_FWD               = 1.
-__C.PROJECTION.LAMDA_AFF_BWD               = 1.
 
 #
 # Training
 #
 __C.TRAIN                                   = edict()
-__C.TRAIN.RESUME_TRAIN                      = False
+__C.TRAIN.RESUME_TRAIN                      = True
 __C.TRAIN.NUM_WORKER                        = 4             # number of data workers
-__C.TRAIN.NUM_EPOCHES                       = 1000
+__C.TRAIN.NUM_EPOCHES                       = 1100
 __C.TRAIN.BRIGHTNESS                        = .4
 __C.TRAIN.CONTRAST                          = .4
 __C.TRAIN.SATURATION                        = .4

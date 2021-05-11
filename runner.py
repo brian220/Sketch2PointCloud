@@ -18,12 +18,11 @@ from datetime import datetime as dt
 from pprint import pprint
 
 from config import cfg
-from core.train import train_net
+from core.train_stage1 import train_stage1_net
+from core.train_stage2 import train_stage2_net
 from core.test import test_net
 from core.evaluate import evaluate_net
 from core.test_opt import test_opt_net
-# from core.evaluate_graphx import evaluate_net
-# from core.evaluate_graphx_fixed_view import evaluate_fixed_view_net
 from core.evaluate_hand_draw import evaluate_hand_draw_net
 from core.evaluate_multi_view import evaluate_multi_view_net
 
@@ -35,7 +34,8 @@ def get_args_from_command_line():
                         default=cfg.CONST.DEVICE,
                         type=str)
     parser.add_argument('--rand', dest='randomize', help='Randomize (do not use a fixed seed)', action='store_true')
-    parser.add_argument('--train', dest='train', help='Train neural networks', action='store_true')
+    parser.add_argument('--train_stage1', dest='train_stage1', help='Train the reconstruction model', action='store_true')
+    parser.add_argument('--train_stage2', dest='train_stage2', help='Train the update model', action='store_true')
     parser.add_argument('--test', dest='test', help='Test neural networks', action='store_true')
     parser.add_argument('--evaluate', dest='evaluate', help='Evaluate neural networks', action='store_true')
     parser.add_argument('--evaluate_hand_draw', dest='evaluate_hand_draw', help='Evaluate neural networks by hand draw sketch', action='store_true')
@@ -77,8 +77,10 @@ def main():
         os.environ["CUDA_VISIBLE_DEVICES"] = cfg.CONST.DEVICE
 
     # Start train/test process
-    if args.train:
-        train_net(cfg)
+    if args.train_stage1:
+        train_stage1_net(cfg)
+    elif args.train_stage2:
+        train_stage2_net(cfg)
     elif args.test:
         test_net(cfg)
     elif args.evaluate:
@@ -91,14 +93,7 @@ def main():
         test_opt_net(cfg)
     else:
         print("Please specify the arguments (--train, --test, --evaluate)")
-    """
-    elif args.evaluate:
-        evaluate_net(cfg)
-    elif args.evaluate_hand_draw:
-        evaluate_hand_draw_net(cfg)
-    elif args.evaluate_fixed_view:
-        evaluate_fixed_view_net(cfg)
-    """
+
 
 if __name__ == '__main__':
     # Check python version
