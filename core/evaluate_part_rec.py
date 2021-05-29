@@ -15,21 +15,10 @@ from datetime import datetime as dt
 
 from models.networks_graphx import Pixel2Pointcloud_GRAPHX
 
-import utils.point_cloud_visualization_old
+import utils.point_cloud_visualization
 import utils.data_loaders
 import utils.data_transforms
 import utils.network_utils
-
-from pyntcloud import PyntCloud
-
-partnet2shapenet = {
-        '176'  :  '39f5eecbfb2470846666a748bda83f67',
-        '41753':  'a58f8f1bd61094b3ff2c92c2a4f65876',
-        '2603' :  '27c00ec2b6ec279958e80128fd34c2b1',
-        '37247':  '484f0070df7d5375492d9da2668ec34c',
-        '36881':  '4231883e92a3c1a21c62d11641ffbd35'
-    }
-
 
 def init_pointcloud_loader(num_points):
     Z = np.random.rand(num_points) + 1.
@@ -44,7 +33,7 @@ def init_pointcloud_loader(num_points):
     return XYZ.astype('float32')
 
 
-def rec(cfg, img_path, weight_path):
+def part_rec(cfg, part_img_path, part_weight_path):
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
     torch.backends.cudnn.benchmark = True
     
@@ -57,7 +46,7 @@ def rec(cfg, img_path, weight_path):
     if cfg.NETWORK.REC_MODEL == 'GRAPHX':
         net = Pixel2Pointcloud_GRAPHX(cfg=cfg,
                                       in_channels=3, 
-                                      in_instances=2048,
+                                      in_instances=cfg.GRAPHX.NUM_INIT_POINTS,
                                       optimizer=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.GRAPHX_LEARNING_RATE, weight_decay=cfg.TRAIN.GRAPHX_WEIGHT_DECAY),
                                       scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
                                       use_graphx=cfg.GRAPHX.USE_GRAPHX)
@@ -66,8 +55,8 @@ def rec(cfg, img_path, weight_path):
     
     # Load weight
     # Load weight for encoder, decoder
-    print('[INFO] %s Loading reconstruction weights from %s ...' % (dt.now(), weight_path))
-    rec_checkpoint = torch.load(weight_path)
+    print('[INFO] %s Loading reconstruction weights from %s ...' % (dt.now(), part_weight_path))
+    rec_checkpoint = torch.load(part_weight_path)
     net.load_state_dict(rec_checkpoint['net'])
     print('[INFO] Best reconstruction result at epoch %d ...' % rec_checkpoint['epoch_idx'])
     epoch_id = int(rec_checkpoint['epoch_idx'])
@@ -75,7 +64,7 @@ def rec(cfg, img_path, weight_path):
     net.eval()
 
     # load img
-    sample = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255.
+    sample = cv2.imread(part_img_path, cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255.
     sample = cv2.cvtColor(sample, cv2.COLOR_GRAY2RGB)
 
     samples = []
@@ -84,7 +73,7 @@ def rec(cfg, img_path, weight_path):
     rendering_images = eval_transforms(rendering_images=samples)
 
     # load init point clouds
-    init_point_cloud_np = init_pointcloud_loader(2048)
+    init_point_cloud_np = init_pointcloud_loader(cfg.GRAPHX.NUM_INIT_POINTS)
     init_point_clouds = np.array([init_point_cloud_np])
     init_point_clouds = torch.from_numpy(init_point_clouds)
 
@@ -102,37 +91,37 @@ def rec(cfg, img_path, weight_path):
     return g_pc
 
 
-def generate_gt(cfg, sample_id, view_id):
+def evaluate_part_rec_net(cfg):
+    components = ['arm', 'back', 'base', 'seat']
 
-    shapenet_id = partnet2shapenet[sample_id]
-
-    gt_pc_path = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/shape_net_core_uniform_samples_2048/03001627/%s.ply' % (shapenet_id)
-    gt_pc = PyntCloud.from_file(gt_pc_path)
-    gt_pc = np.array(gt_pc.points).astype(np.float32)
-
-    output_path = cfg.EVALUATE.OUT_PATH
-    outfolder = os.path.join(output_path, str(sample_id))
-    rendering_views = utils.point_cloud_visualization_old.get_point_cloud_image(gt_pc,
-                                                                                outfolder,
-                                                                                int(sample_id), view_id, "gt", view=[ 45*int(view_id + 1), 25])
-
-
-def evaluate_net(cfg):
-    sample_img_folder = cfg.EVALUATE.IMG_FOLDER
-    weight_path = cfg.EVALUATE.WEIGHT_PATH
+    sample_id = cfg.EVALUATE_PART_REC.SAMPLE_ID
+    sample_img_path = cfg.EVALUATE_PART_REC.IMG_FOLDER
     
-    for partnet_id in partnet2shapenet.keys():
-        sample_id = partnet_id
-        for view_id in range(3):
-            img_path = os.path.join(sample_img_folder, str(sample_id), 'render_' + str(view_id) + '.png')
+    weight_dict = {}
+    weight_dict['arm'] = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v23/checkpoints/best-rec-ckpt.pth'
+    weight_dict['back'] = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v24/checkpoints/best-rec-ckpt.pth'
+    weight_dict['base'] = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v25/checkpoints/best-rec-ckpt.pth'
+    weight_dict['seat'] = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v26/checkpoints/best-rec-ckpt.pth'
     
-            g_pc = rec(cfg, img_path, weight_path)
-            print(g_pc.shape)
+    for view_id in range(3):
+        img_dict = {}
+        img_dict['arm'] = os.path.join(sample_img_path ,  'Chair_Arm', str(sample_id), 'render_' + str(view_id) + '.png')
+        img_dict['back'] = os.path.join(sample_img_path ,  'Chair_Back', str(sample_id), 'render_' + str(view_id) + '.png')
+        img_dict['base'] = os.path.join(sample_img_path ,  'Chair_Base', str(sample_id), 'render_' + str(view_id) + '.png')
+        img_dict['seat'] = os.path.join(sample_img_path ,  'Chair_Seat', str(sample_id), 'render_' + str(view_id) + '.png')
+    
+        g_pcs = []
+        for component in components:
+            if os.path.exists(img_dict[component]):    
+                g_pcs.append(part_rec(cfg, img_dict[component], weight_dict[component]))
         
-            output_path = cfg.EVALUATE.OUT_PATH
-            outfolder = os.path.join(output_path, str(sample_id))
-            rendering_views = utils.point_cloud_visualization_old.get_point_cloud_image(g_pc,
-                                                                                        outfolder,
-                                                                                        int(sample_id), view_id, "rec result", view=[ 45*int(view_id + 1), 25])
-            
-            generate_gt(cfg, sample_id, view_id)
+        g_pcs = tuple(g_pcs)
+        g_pc = np.concatenate(g_pcs, axis=0)
+        print(g_pc.shape)
+    
+        output_path = cfg.EVALUATE_PART_REC.OUT_PATH
+        outfolder = os.path.join(output_path, str(sample_id))
+        rendering_views = utils.point_cloud_visualization.get_point_cloud_image(g_pc,
+                                                                                outfolder,
+                                                                                int(sample_id), view_id, "part rec result", view=[ 45*int(view_id + 1), 25])
+    

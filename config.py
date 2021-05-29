@@ -12,12 +12,12 @@ cfg                                         = __C
 #
 __C.DATASETS                                = edict()
 __C.DATASETS.SHAPENET                       = edict()
-__C.DATASETS.SHAPENET.TAXONOMY_FILE_PATH    = './datasets/ShapeNetPart.json'
+__C.DATASETS.SHAPENET.TAXONOMY_FILE_PATH    = './datasets/rec.json'
 
+__C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/423ECD443ECD3229/new_dataset/shapenet_24_fix/%s/%s/render_%d.png'
+__C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/shape_net_core_uniform_samples_2048/%s/%s.ply'
+__C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/423ECD443ECD3229/new_dataset/shapenet_24_fix/%s/%s/view.txt'
 
-__C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/423ECD443ECD3229/dataset/partnet_sketch/%s/%s/%s/render_%d.png'
-__C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/423ECD443ECD3229/dataset/partnet_point_cloud/%s/%s/%s/model.ply'
-__C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/423ECD443ECD3229/dataset/partnet_sketch/%s/%s/%s/view.txt'
 __C.DATASETS.SHAPENET.HAND_DRAW_IMG_PATH    = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/hand_draw_img'
 
 # __C.DATASETS.SHAPENET.UPDATE_PATH           = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/sketch_eight_view/%s/%s/render_%d.png'
@@ -32,10 +32,9 @@ __C.DATASET.RENDER_VIEWS                    = 24
 
 __C.DATASET.MEAN                            = [0.5, 0.5, 0.5]
 __C.DATASET.STD                             = [0.5, 0.5, 0.5]
-__C.DATASET.TRAIN_DATASET                   = 'ShapeNetPart'
-__C.DATASET.TEST_DATASET                    = 'ShapeNetPart'
+__C.DATASET.TRAIN_DATASET                   = 'ShapeNetFix'
+__C.DATASET.TEST_DATASET                    = 'ShapeNetFix'
 __C.DATASET.CLASS                           = 'chair'
-__C.DATASET.COMPONENT                       = 'Chair_Arm'
 
 #
 # Common
@@ -72,7 +71,7 @@ __C.NETWORK.TCONV_USE_BIAS                  = False
 #
 __C.GRAPHX                                 = edict()
 __C.GRAPHX.USE_GRAPHX                      = True
-__C.GRAPHX.NUM_INIT_POINTS                 = 512
+__C.GRAPHX.NUM_INIT_POINTS                 = 2048
 
 #
 # Updater
@@ -129,14 +128,9 @@ __C.TEST.RESULT_PATH                        = '/media/caig/FECA2C89CA2C406F/sket
 # Evaluating options
 #
 __C.EVALUATE                                = edict()
-__C.EVALUATE.TAXONOMY_ID                    = '03001627'
-__C.EVALUATE.INPUT_IMAGE_FOLDER             = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_3_28/baseline/evaluate_input_img'
-__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_3_28/baseline/evaluate_output'
-__C.EVALUATE.INFO_FILE                      = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_3_28/baseline/eval_chair.txt'
-__C.EVALUATE.RECONSTRUCTION_WEIGHTS         = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v1/checkpoints/best-reconstruction-ckpt.pth'
-
-__C.EVALUATE.VIEW_ENCODER_WEIGHTS           = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/output_v3/checkpoints/best-reconstruction-ckpt.pth'
-__C.EVALUATE.VIEW_ESTIMATION_WEIGHTS        = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/output_v3/checkpoints/best-view-ckpt.pth'
+__C.EVALUATE.IMG_FOLDER                     = '/media/caig/423ECD443ECD3229/dataset/shapenet_test_sketch/03001627'
+__C.EVALUATE.WEIGHT_PATH                    = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v20/checkpoints/best-rec-ckpt.pth'
+__C.EVALUATE.OUT_PATH                       = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/eval_output'
 
 #
 # Evaluate on the true habd draw image
@@ -167,6 +161,13 @@ __C.EVALUATE_MULTI_VIEW.RECONSTRUCTION_WEIGHTS      = '/media/caig/FECA2C89CA2C4
 __C.EVALUATE_MULTI_VIEW.UPDATE_WEIGHTS              = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v15/checkpoints/best-update-ckpt.pth'
 __C.EVALUATE_MULTI_VIEW.OUT_DIR                     = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_multi_view/outputs'
 
+#
+# Evaluate part
+# 
+__C.EVALUATE_PART_REC                               = edict()
+__C.EVALUATE_PART_REC.IMG_FOLDER                    = '/media/caig/423ECD443ECD3229/dataset/partnet_eval_data'
+__C.EVALUATE_PART_REC.SAMPLE_ID                     = 41753
+__C.EVALUATE_PART_REC.OUT_PATH                      = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/part_eval_output'
 
 #
 # Test time optimization

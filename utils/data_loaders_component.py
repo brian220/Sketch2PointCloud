@@ -63,8 +63,8 @@ def sample_spherical(n_points):
     return pc.astype('float32')
 
 
-class ShapeNetDataset(torch.utils.data.dataset.Dataset):
-    """ShapeNetDataset class used for PyTorch DataLoader"""
+class ShapeNetPartDataset(torch.utils.data.dataset.Dataset):
+    """ShapeNetPartDataset class used for PyTorch DataLoader"""
     def __init__(self, dataset_type, file_list, init_num_points, rec_model, transforms=None):
         self.dataset_type = dataset_type
         self.file_list = file_list
@@ -113,7 +113,7 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         # read the test, train image
         rendering_images = []
         rendering_image = cv2.imread(selected_rendering_image_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.
-        # rendering_image = cv2.cvtColor(rendering_image, cv2.COLOR_GRAY2RGB)
+        rendering_image = cv2.cvtColor(rendering_image, cv2.COLOR_GRAY2RGB)
 
         if len(rendering_image.shape) < 3:
             print('[FATAL] %s It seems that there is something wrong with the rendering image file %s' %
@@ -140,17 +140,19 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         return (taxonomy_name, sample_name, rendering_images,
                 model_azi, model_ele,
                 init_pointcloud_loader(self.init_num_points), ground_truth_point_cloud)
-# //////////////////////////////// = End of ShapeNetDataset Class Definition = ///////////////////////////////// #
+# //////////////////////////////// = End of ShapeNetPartDataset Class Definition = ///////////////////////////////// #
 
 
-class ShapeNetDataLoader:
+class ShapeNetPartDataLoader:
     def __init__(self, cfg):
         self.dataset_taxonomy = None
+        self.train_component = cfg.DATASET.COMPONENT
 
         # rec
         self.render_views = cfg.DATASET.RENDER_VIEWS
         self.rendering_image_path_template = cfg.DATASETS.SHAPENET.RENDERING_PATH
         self.rec_view_path_template = cfg.DATASETS.SHAPENET.VIEW_PATH
+
         self.point_cloud_path_template = cfg.DATASETS.SHAPENET.POINT_CLOUD_PATH
         
         self.class_name = cfg.DATASET.CLASS
@@ -167,59 +169,60 @@ class ShapeNetDataLoader:
 
     def get_dataset(self, dataset_type, transforms=None):
         taxonomy_folder_name = self.dataset_class_data_taxonomy['taxonomy_id']
-        print('[INFO] %s Collecting files of Taxonomy[ID=%s, Name=%s]' %
-                (dt.now(), self.dataset_class_data_taxonomy['taxonomy_id'], self.class_name))
+        component_folder_name = self.train_component
+        print('[INFO] %s Collecting files of Taxonomy[ID=%s, Name=%s, Component=%s]' %
+                (dt.now(), self.dataset_class_data_taxonomy['taxonomy_id'], self.class_name, self.train_component))
         
         samples = []
         if dataset_type == DatasetType.TRAIN:
-            samples = self.dataset_class_data_taxonomy['train']
+            samples = self.dataset_class_data_taxonomy[component_folder_name]['train']
         elif dataset_type == DatasetType.TEST:
-            samples = self.dataset_class_data_taxonomy['test']
+            samples = self.dataset_class_data_taxonomy[component_folder_name]['test']
         elif dataset_type == DatasetType.VAL:
-            samples = self.dataset_class_data_taxonomy['val']
+            samples = self.dataset_class_data_taxonomy[component_folder_name]['val']
 
-        files = self.get_files_of_taxonomy(taxonomy_folder_name, samples)
+        files = self.get_files_of_taxonomy(taxonomy_folder_name, component_folder_name, samples)
 
         print('[INFO] %s Complete collecting files of the dataset. Total files: %d.' % (dt.now(), len(files)))
-        return ShapeNetDataset(dataset_type, files, self.init_num_points, self.rec_model, transforms)
+        return ShapeNetPartDataset(dataset_type, files, self.init_num_points, self.rec_model, transforms)
         
-    def get_files_of_taxonomy(self, taxonomy_folder_name, samples):
+    def get_files_of_taxonomy(self, taxonomy_folder_name, component_folder_name, samples):
         files_of_taxonomy = []
         for sample_idx, sample_name in enumerate(samples):
             # check samples
-            sample_path = self.rendering_image_path_template % (taxonomy_folder_name, sample_name, 0)
+            sample_path = self.rendering_image_path_template % (taxonomy_folder_name, component_folder_name, sample_name, 0)
             sample_folder = os.path.dirname(sample_path)
             if not os.path.exists(sample_folder):
-                print('[WARN] %s Ignore sample %s/%s since sample file not exists.' %
-                      (dt.now(), taxonomy_folder_name, sample_name))
+                print('[WARN] %s Ignore sample %s/%s/%s since sample file not exists.' %
+                      (dt.now(), taxonomy_folder_name, component_folder_name, sample_name))
                 continue
 
             # Get file paths of pointcloud
-            point_cloud_file_path = self.point_cloud_path_template % (taxonomy_folder_name, sample_name)
+            point_cloud_file_path = self.point_cloud_path_template % (taxonomy_folder_name, component_folder_name, sample_name)
             if not os.path.exists(point_cloud_file_path):
-                print('[WARN] %s Ignore sample %s/%s since point cloud file not exists.' %
-                      (dt.now(), taxonomy_folder_name, sample_name))
+                print('[WARN] %s Ignore sample %s/%s/%s since point cloud file not exists.' %
+                      (dt.now(), taxonomy_folder_name, component_folder_name, sample_name))
                 continue
 
             # Get file paths of rendering images
             rendering_image_indexes = range(self.render_views)
             rendering_image_file_paths = []
             for image_idx in rendering_image_indexes:
-                img_file_path = self.rendering_image_path_template % (taxonomy_folder_name, sample_name, image_idx)
+                img_file_path = self.rendering_image_path_template % (taxonomy_folder_name, component_folder_name, sample_name, image_idx)
                 if not os.path.exists(img_file_path):
                     continue
                 rendering_image_file_paths.append(img_file_path)
             
             if len(rendering_image_file_paths) == 0:
-                print('[WARN] %s Ignore sample %s/%s since rendering image files not exists.' %
-                      (dt.now(), taxonomy_folder_name, sample_name))
+                print('[WARN] %s Ignore sample %s/%s/%s since rendering image files not exists.' %
+                      (dt.now(), taxonomy_folder_name, component_folder_name, sample_name))
                 continue
             
             # Get views for rec model (stage 1) (azimuth, elevation)
-            rec_view_path = self.rec_view_path_template % (taxonomy_folder_name, sample_name)
+            rec_view_path = self.rec_view_path_template % (taxonomy_folder_name, component_folder_name, sample_name)
             if not os.path.exists(rec_view_path):
-                print('[WARN] %s Ignore sample %s/%s since view file not exists.' %
-                      (dt.now(), taxonomy_folder_name, sample_name))
+                print('[WARN] %s Ignore sample %s/%s/%s since view file not exists.' %
+                      (dt.now(), taxonomy_folder_name, component_folder_name, sample_name))
                 continue
 
             rec_angles = []
@@ -253,7 +256,7 @@ class ShapeNetDataLoader:
 
 DATASET_LOADER_MAPPING = {
     # 'ShapeNet': ShapeNetDataLoader,
-    'ShapeNetFix':ShapeNetDataLoader
+    'ShapeNetPart':ShapeNetPartDataLoader
     # 'Pascal3D': Pascal3dDataLoader, # not implemented
     # 'Pix3D': Pix3dDataLoader # not implemented
 } 

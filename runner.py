@@ -25,6 +25,7 @@ from core.evaluate import evaluate_net
 from core.test_opt import test_opt_net
 from core.evaluate_hand_draw import evaluate_hand_draw_net
 from core.evaluate_multi_view import evaluate_multi_view_net
+from core.evaluate_part_rec import evaluate_part_rec_net
 
 def get_args_from_command_line():
     parser = ArgumentParser(description='Parser of Runner of Pix2Vox')
@@ -41,6 +42,7 @@ def get_args_from_command_line():
     parser.add_argument('--evaluate_hand_draw', dest='evaluate_hand_draw', help='Evaluate neural networks by hand draw sketch', action='store_true')
     parser.add_argument('--evaluate_fixed_view', dest='evaluate_fixed_view', help='Evaluate neural networks in fixed views', action='store_true')
     parser.add_argument('--evaluate_multi_view', dest='evaluate_multi_view', help='Evaluate neural networks in multi views', action='store_true')
+    parser.add_argument('--evaluate_part_rec', dest='evaluate_part_rec', help='Evaluate neural networks by part reconstruction', action='store_true')
     parser.add_argument('--batch-size',
                         dest='batch_size',
                         help='name of the net',
@@ -89,6 +91,8 @@ def main():
         evaluate_hand_draw_net(cfg)
     elif args.evaluate_multi_view:
         evaluate_multi_view_net(cfg)
+    elif args.evaluate_part_rec:
+        evaluate_part_rec_net(cfg)
     elif args.test_opt:
         test_opt_net(cfg)
     else:

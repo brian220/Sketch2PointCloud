@@ -16,7 +16,7 @@ import torch.utils.data
 import scipy.misc as sc
 from torchvision.utils import save_image
 
-import utils.point_cloud_visualization
+import utils.point_cloud_visualization_old
 import utils.data_loaders
 import utils.data_transforms
 import utils.network_utils
@@ -80,13 +80,13 @@ def valid_stage1_net(cfg,
                 
                 # Predict Pointcloud
                 p_pc = pred_pc[0].detach().cpu().numpy()
-                rendering_views = utils.point_cloud_visualization.get_point_cloud_image(p_pc, os.path.join(img_dir, 'test'),
+                rendering_views = utils.point_cloud_visualization_old.get_point_cloud_image(p_pc, os.path.join(img_dir, 'test'),
                                                                                         sample_idx, epoch_idx, "reconstruction")
                 test_writer.add_image('Test Sample#%02d/Point Cloud Reconstructed' % sample_idx, rendering_views, epoch_idx)
                 
                 # Groundtruth Pointcloud
                 gt_pc = ground_truth_point_clouds[0].detach().cpu().numpy()
-                rendering_views = utils.point_cloud_visualization.get_point_cloud_image(gt_pc, os.path.join(img_dir, 'test'),
+                rendering_views = utils.point_cloud_visualization_old.get_point_cloud_image(gt_pc, os.path.join(img_dir, 'test'),
                                                                                         sample_idx, epoch_idx, "ground truth")
                 test_writer.add_image('Test Sample#%02d/Point Cloud GroundTruth' % sample_idx, rendering_views, epoch_idx)
 
