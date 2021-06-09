@@ -22,10 +22,10 @@ from datetime import datetime as dt
 from tensorboardX import SummaryWriter
 from time import time
 
-from core.valid_stage2 import valid_stage2_net
-from models.networks_psgn import Pixel2Pointcloud_PSGN_FC
 from models.networks_graphx import Pixel2Pointcloud_GRAPHX
 from models.updater_multi_scale import Updater
+
+from core.valid_stage2 import valid_stage2_net
 
 def train_stage2_net(cfg):
     print("cuda is available?", torch.cuda.is_available())
@@ -42,8 +42,6 @@ def train_stage2_net(cfg):
         utils.data_transforms.ToTensor(),
     ])
     val_transforms = utils.data_transforms.Compose([
-        utils.data_transforms.RandomBackground(cfg.TEST.RANDOM_BG_COLOR_RANGE),
-        utils.data_transforms.Normalize(mean=cfg.DATASET.MEAN, std=cfg.DATASET.STD),
         utils.data_transforms.ToTensor(),
     ])
 
@@ -67,45 +65,37 @@ def train_stage2_net(cfg):
 
     # Set up networks
     # The parameters here need to be set in cfg
-    if cfg.NETWORK.REC_MODEL == 'GRAPHX':
-        net = Pixel2Pointcloud_GRAPHX(cfg=cfg,
+    rec_net = Pixel2Pointcloud_GRAPHX(cfg=cfg,
                                       in_channels=3, 
                                       in_instances=cfg.GRAPHX.NUM_INIT_POINTS,
                                       optimizer=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.GRAPHX_LEARNING_RATE, weight_decay=cfg.TRAIN.GRAPHX_WEIGHT_DECAY),
                                       scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
                                       use_graphx=cfg.GRAPHX.USE_GRAPHX)
-    elif cfg.NETWORK.REC_MODEL == 'PSGN_FC':
-        net = Pixel2Pointcloud_PSGN_FC(cfg=cfg,
-                                       optimizer_conv=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.PSGN_FC_LEARNING_RATE, weight_decay=cfg.TRAIN.PSGN_FC_CONV_WEIGHT_DECAY),
-                                       optimizer_fc=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.PSGN_FC_LEARNING_RATE, weight_decay=cfg.TRAIN.PSGN_FC_FC_WEIGHT_DECAY),
-                                       scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA))
     
     # Updater network
-    update_net = Updater(cfg=cfg,
-                         in_channels=3,
-                         optimizer=lambda x: torch.optim.Adam(x, lr=cfg.UPDATER.LEARNING_RATE))
+    refine_net =  Updater(cfg=cfg,
+                          in_channels=3,
+                          optimizer=lambda x: torch.optim.Adam(x, lr=cfg.UPDATER.LEARNING_RATE))
+
 
     if torch.cuda.is_available():
-       net = torch.nn.DataParallel(net, device_ids=cfg.CONST.DEVICE).cuda()
-       update_net = torch.nn.DataParallel(update_net, device_ids=cfg.CONST.DEVICE).cuda()
+       rec_net = torch.nn.DataParallel(rec_net, device_ids=cfg.CONST.DEVICE).cuda()
+       refine_net = torch.nn.DataParallel(refine_net, device_ids=cfg.CONST.DEVICE).cuda()
 
-    print(net)
-    print(update_net)
+    print(rec_net)
+    print(refine_net)
 
-    init_epoch = 0
+    # Load pretrained generator
+    if cfg.REFINE.USE_PRETRAIN_GENERATOR:
+        print('[INFO] %s Recovering from %s ...' % (dt.now(), cfg.REFINE.GENERATOR_WEIGHTS))
+        checkpoint = torch.load(cfg.REFINE.GENERATOR_WEIGHTS)
+        rec_net.load_state_dict(checkpoint['net'])
+        print('Best Epoch: %d' % (checkpoint['epoch_idx']))
+
+    init_epoch = cfg.REFINE.START_EPOCH
     # best_emd =  10000 # less is better
     best_loss = 100000
     best_epoch = -1
-    
-    if 'WEIGHTS' in cfg.CONST and cfg.TRAIN.RESUME_TRAIN:
-        print('[INFO] %s Recovering from %s ...' % (dt.now(), cfg.CONST.WEIGHTS))
-        checkpoint = torch.load(cfg.CONST.WEIGHTS)
-        init_epoch = checkpoint['epoch_idx']
-        net.load_state_dict(checkpoint['net'])
-
-        print('[INFO] %s Recover complete. Current epoch #%d at epoch #%d.' %
-              (dt.now(), init_epoch, cfg.TRAIN.NUM_EPOCHES))
-    
 
     # Summary writer for TensorBoard
     output_dir = os.path.join(cfg.DIR.OUT_PATH, '%s')
@@ -125,10 +115,11 @@ def train_stage2_net(cfg):
         # Batch average meterics
         batch_time = utils.network_utils.AverageMeter()
         data_time = utils.network_utils.AverageMeter()
-        reconstruction_losses = utils.network_utils.AverageMeter()
-
-        net.eval()
-        update_net.train()
+        losses = utils.network_utils.AverageMeter()
+        
+        # Train only refine net (stage2)
+        rec_net.eval()
+        refine_net.train()
 
         batch_end_time = time()
         n_batches = len(train_data_loader)
@@ -149,28 +140,25 @@ def train_stage2_net(cfg):
             init_point_clouds = utils.network_utils.var_or_cuda(init_point_clouds)
             ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
             
-            # net give out a point cloud
-            pred_pc = net(rendering_images, init_point_clouds)
-            # *** Here put the same images to reconstruction and update model
-            rec_loss = update_net.module.learn(rendering_images, pred_pc, ground_truth_point_clouds, model_x, model_y)
+            coarse_pc = rec_net(rendering_images, init_point_clouds)
+            loss = refine_net.module.learn(rendering_images, coarse_pc, ground_truth_point_clouds, model_x, model_y)
             
-            reconstruction_losses.update(rec_loss)
+            losses.update(loss)
 
             # Tick / tock
             batch_time.update(time() - batch_end_time)
             batch_end_time = time()
         
             print(
-                '[INFO] %s [Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) loss = %.4f'
+                '[INFO] %s [Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) loss = %.4f '
                 % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val,
-                   data_time.val, rec_loss))
-            break
+                   data_time.val, loss))
            
         # Append epoch loss to TensorBoard
-        train_writer.add_scalar('Total/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)
+        train_writer.add_scalar('Total/EpochLoss_Rec', losses.avg, epoch_idx + 1)
 
         # Validate the training models
-        current_loss = valid_stage2_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, net, update_net)
+        current_loss = valid_stage2_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, rec_net, refine_net)
         
         # Save weights to file
         if (epoch_idx + 1) % cfg.TRAIN.SAVE_FREQ == 0:
@@ -179,7 +167,7 @@ def train_stage2_net(cfg):
 
             utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'ckpt-epoch-%04d.pth' % (epoch_idx + 1)), 
                                                  epoch_idx + 1, 
-                                                 update_net,
+                                                 refine_net,
                                                  best_loss, best_epoch)
         
         # Save best check point for cd
@@ -189,9 +177,9 @@ def train_stage2_net(cfg):
 
             best_loss = current_loss
             best_epoch = epoch_idx + 1
-            utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'best-update-ckpt.pth'), 
+            utils.network_utils.save_checkpoints(cfg, os.path.join(ckpt_dir, 'best-refine-ckpt.pth'), 
                                                  epoch_idx + 1, 
-                                                 update_net,
+                                                 refine_net,
                                                  best_loss, best_epoch)
     
         

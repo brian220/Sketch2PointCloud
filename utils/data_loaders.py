@@ -65,7 +65,8 @@ def sample_spherical(n_points):
 
 class ShapeNetDataset(torch.utils.data.dataset.Dataset):
     """ShapeNetDataset class used for PyTorch DataLoader"""
-    def __init__(self, dataset_type, file_list, init_num_points, rec_model, transforms=None):
+    def __init__(self, cfg, dataset_type, file_list, init_num_points, rec_model, transforms=None):
+        self.cfg = cfg
         self.dataset_type = dataset_type
         self.file_list = file_list
         self.init_num_points = init_num_points
@@ -113,7 +114,8 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
         # read the test, train image
         rendering_images = []
         rendering_image = cv2.imread(selected_rendering_image_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.
-        # rendering_image = cv2.cvtColor(rendering_image, cv2.COLOR_GRAY2RGB)
+        if self.cfg.DATASET.TRAIN_DATASET == 'ShapeNetSketch':
+            rendering_image = cv2.cvtColor(rendering_image, cv2.COLOR_GRAY2RGB)
 
         if len(rendering_image.shape) < 3:
             print('[FATAL] %s It seems that there is something wrong with the rendering image file %s' %
@@ -145,6 +147,7 @@ class ShapeNetDataset(torch.utils.data.dataset.Dataset):
 
 class ShapeNetDataLoader:
     def __init__(self, cfg):
+        self.cfg = cfg
         self.dataset_taxonomy = None
 
         # rec
@@ -181,7 +184,7 @@ class ShapeNetDataLoader:
         files = self.get_files_of_taxonomy(taxonomy_folder_name, samples)
 
         print('[INFO] %s Complete collecting files of the dataset. Total files: %d.' % (dt.now(), len(files)))
-        return ShapeNetDataset(dataset_type, files, self.init_num_points, self.rec_model, transforms)
+        return ShapeNetDataset(self.cfg, dataset_type, files, self.init_num_points, self.rec_model, transforms)
         
     def get_files_of_taxonomy(self, taxonomy_folder_name, samples):
         files_of_taxonomy = []
@@ -233,7 +236,7 @@ class ShapeNetDataLoader:
                 rec_angle_ele = float(rec_angle.split(' ')[1])
                 # convert angles to radians
                 rec_radian_azi.append(rec_angle_azi*np.pi/180.)
-                rec_radian_ele.append(rec_angle_ele*np.pi/180.)
+                rec_radian_ele.append((rec_angle_ele - 90.)*np.pi/180.)
 
             # Append to the list of rendering images
             files_of_taxonomy.append({
@@ -252,8 +255,9 @@ class ShapeNetDataLoader:
 
 
 DATASET_LOADER_MAPPING = {
-    # 'ShapeNet': ShapeNetDataLoader,
-    'ShapeNetFix':ShapeNetDataLoader
+    'ShapeNetSketch': ShapeNetDataLoader,
+    'ShapeNetFix':ShapeNetDataLoader,
+    'ShapeNetColor':ShapeNetDataLoader
     # 'Pascal3D': Pascal3dDataLoader, # not implemented
     # 'Pix3D': Pix3dDataLoader # not implemented
 } 

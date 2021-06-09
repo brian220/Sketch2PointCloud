@@ -40,9 +40,6 @@ def test_net(cfg):
     CROP_SIZE = cfg.CONST.CROP_IMG_H, cfg.CONST.CROP_IMG_W
 
     test_transforms = utils.data_transforms.Compose([
-        utils.data_transforms.CenterCrop(IMG_SIZE, CROP_SIZE),
-        utils.data_transforms.RandomBackground(cfg.TEST.RANDOM_BG_COLOR_RANGE),
-        utils.data_transforms.Normalize(mean=cfg.DATASET.MEAN, std=cfg.DATASET.STD),
         utils.data_transforms.ToTensor(),
     ])
     dataset_loader = utils.data_loaders.DATASET_LOADER_MAPPING[cfg.DATASET.TEST_DATASET](cfg)
@@ -53,7 +50,6 @@ def test_net(cfg):
                                                    pin_memory=True,
                                                    shuffle=False)
 
-    # Set up networks
     # Set up networks
     # The parameters here need to be set in cfg
     net = Pixel2Pointcloud(3, cfg.GRAPHX.NUM_INIT_POINTS,

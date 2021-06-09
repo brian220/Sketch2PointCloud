@@ -13,7 +13,6 @@ cfg                                         = __C
 __C.DATASETS                                = edict()
 __C.DATASETS.SHAPENET                       = edict()
 __C.DATASETS.SHAPENET.TAXONOMY_FILE_PATH    = './datasets/rec.json'
-
 __C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/423ECD443ECD3229/new_dataset/shapenet_24_fix/%s/%s/render_%d.png'
 __C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/shape_net_core_uniform_samples_2048/%s/%s.ply'
 __C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/423ECD443ECD3229/new_dataset/shapenet_24_fix/%s/%s/view.txt'
@@ -45,10 +44,10 @@ __C.CONST.DEVICE_NUM                        = 1
 __C.CONST.RNG_SEED                          = 0
 __C.CONST.IMG_W                             = 224       # Image width for input
 __C.CONST.IMG_H                             = 224       # Image height for input
-__C.CONST.BATCH_SIZE                        = 8
+__C.CONST.BATCH_SIZE                        = 4
 __C.CONST.BIN_SIZE                          = 15
 __C.CONST.NUM_POINTS                        = 2048
-__C.CONST.WEIGHTS                           = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v20/checkpoints/best-rec-ckpt.pth'
+__C.CONST.WEIGHTS                           = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/output/checkpoints/ckpt-epoch-0600.pth'
 
 #
 # Directories
@@ -73,6 +72,9 @@ __C.GRAPHX                                 = edict()
 __C.GRAPHX.USE_GRAPHX                      = True
 __C.GRAPHX.NUM_INIT_POINTS                 = 2048
 
+
+cfg.GAN
+
 #
 # Updater
 #
@@ -80,7 +82,20 @@ __C.UPDATER                               = edict()
 __C.UPDATER.RANGE_MAX                     = 0.2
 __C.UPDATER.LEARNING_RATE                 = 1e-3
 __C.UPDATER.NOISE_LENGTH                  = 32
+__C.UPDATER.PC_ENCODE_MODULE              = 'Pointnet++'
+__C.UPDATER.PC_DECODE_MODULE              = 'Graphx'
 
+
+#
+# Updater
+#
+__C.REFINE                                 = edict()
+__C.REFINE.USE_PRETRAIN_GENERATOR          = True
+__C.REFINE.GENERATOR_WEIGHTS               = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v27/checkpoints/best-rec-ckpt.pth'
+__C.REFINE.START_EPOCH                     = 1000
+__C.REFINE.EDGERES_LEARNING_RATE           = 1e-4
+__C.REFINE.EDGERES_WEIGHT_DECAY            = 0
+__C.REFINE.EDGERES_BETAS                   = (0.0, 0.9)
 
 #
 # Training
@@ -88,7 +103,7 @@ __C.UPDATER.NOISE_LENGTH                  = 32
 __C.TRAIN                                   = edict()
 __C.TRAIN.RESUME_TRAIN                      = False
 __C.TRAIN.NUM_WORKER                        = 4             # number of data workers
-__C.TRAIN.NUM_EPOCHES                       = 1000
+__C.TRAIN.NUM_EPOCHES                       = 1100
 __C.TRAIN.BRIGHTNESS                        = .4
 __C.TRAIN.CONTRAST                          = .4
 __C.TRAIN.SATURATION                        = .4
@@ -121,8 +136,8 @@ __C.TEST                                    = edict()
 __C.TEST.RANDOM_BG_COLOR_RANGE              = [[240, 240], [240, 240], [240, 240]]
 __C.TEST.VOXEL_THRESH                       = [.2, .3, .4, .5]
 __C.TEST.NUM_WORKER                         = 4             # number of data workers
-__C.TEST.RECONSTRUCTION_WEIGHTS             = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v1/checkpoints/best-reconstruction-ckpt.pth'
-__C.TEST.RESULT_PATH                        = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_3_28/baseline/test.txt'
+__C.TEST.RECONSTRUCTION_WEIGHTS             = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v20/checkpoints/best-rec-ckpt.pth'
+__C.TEST.RESULT_PATH                        = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/test.txt'
 
 #
 # Evaluating options

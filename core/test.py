@@ -22,7 +22,6 @@ import utils.rotation_eval
 
 from datetime import datetime as dt
 
-from models.networks_psgn import Pixel2Pointcloud_PSGN_FC
 from models.networks_graphx import Pixel2Pointcloud_GRAPHX
 
 from losses.chamfer_loss import ChamferLoss
@@ -68,7 +67,6 @@ def test_net(cfg):
     cd = ChamferLoss().cuda()
     
     # Batch average meterics
-    loss_2ds = utils.network_utils.AverageMeter()
     cd_distances = utils.network_utils.AverageMeter()
     emd_distances = utils.network_utils.AverageMeter()
     pointwise_emd_distances = utils.network_utils.AverageMeter()
@@ -80,7 +78,7 @@ def test_net(cfg):
 
     # Testing loop
     for sample_idx, (taxonomy_names, sample_names, rendering_images,
-                    model_gt, model_x, model_y,
+                    model_azi, model_ele,
                     init_point_clouds, ground_truth_point_clouds) in enumerate(test_data_loader):
         with torch.no_grad():
             # Only one image per sample
@@ -88,43 +86,39 @@ def test_net(cfg):
             
             # Get data from data loader
             input_imgs = utils.network_utils.var_or_cuda(rendering_images)
-            model_gt = utils.network_utils.var_or_cuda(model_gt)
-            model_x = utils.network_utils.var_or_cuda(model_x)
-            model_y = utils.network_utils.var_or_cuda(model_y)
+            model_azi = utils.network_utils.var_or_cuda(model_azi)
+            model_ele = utils.network_utils.var_or_cuda(model_ele)
             init_pc = utils.network_utils.var_or_cuda(init_point_clouds)
             gt_pc = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
             
             #=================================================#
             #           Test the encoder, decoder             #
             #=================================================#
-            loss, loss_2d, loss_3d, generated_point_clouds, proj_pred, proj_gt, point_gt = net.module.loss(input_imgs, init_pc, gt_pc, model_x, model_y, model_gt)
+            loss, pred_pc = net.module.loss(input_imgs, init_pc, gt_pc, model_azi, model_ele)
 
             # Compute CD, EMD
-            cd_distance = cd(generated_point_clouds, gt_pc) / cfg.CONST.BATCH_SIZE / cfg.CONST.NUM_POINTS
-            emd_distance = torch.mean(emd(generated_point_clouds, gt_pc))
+            cd_distance = cd(pred_pc, gt_pc) / cfg.CONST.BATCH_SIZE / cfg.CONST.NUM_POINTS
+            emd_distance = torch.mean(emd(pred_pc, gt_pc))
             pointwise_emd_distance = emd_distance / cfg.CONST.NUM_POINTS
             
             # Append loss and accuracy to average metrics
-            loss_2ds.update(loss_2d.item())
             cd_distances.update(cd_distance.item())
             emd_distances.update(emd_distance.item())
             pointwise_emd_distances.update(pointwise_emd_distance.item())
 
-            print("Test on [%d/%d] data, Loss_2d: %.4f CD: %.4f Point EMD: %.4f Total EMD %.4f" % (sample_idx + 1,  n_batches, loss_2d.item(), cd_distance.item(), pointwise_emd_distance.item(), emd_distance.item()))
+            print("Test on [%d/%d] data, CD: %.4f Point EMD: %.4f Total EMD %.4f" % (sample_idx + 1,  n_batches, cd_distance.item(), pointwise_emd_distance.item(), emd_distance.item()))
     
     # print result
     print("Reconstruction result:")
     print("CD result: ", cd_distances.avg)
     print("Pointwise EMD result: ", pointwise_emd_distances.avg)
     print("Total EMD result", emd_distances.avg)
-    print("2d distance", loss_2ds.avg)
     logname = cfg.TEST.RESULT_PATH 
     with open(logname, 'a') as f:
         f.write('Reconstruction result: \n')
         f.write("CD result: %.8f \n" % cd_distances.avg)
         f.write("Pointwise EMD result: %.8f \n" % pointwise_emd_distances.avg)
         f.write("Total EMD result: %.8f \n" % emd_distances.avg)
-        f.write("Total 2d distance: %.8f \n" % loss_2ds.avg)
             
 
 

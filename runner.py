@@ -17,9 +17,10 @@ from argparse import ArgumentParser
 from datetime import datetime as dt
 from pprint import pprint
 
-from config import cfg
+from config_gan import cfg
 from core.train_stage1 import train_stage1_net
 from core.train_stage2 import train_stage2_net
+from core.train_gan import train_gan_net
 from core.test import test_net
 from core.evaluate import evaluate_net
 from core.test_opt import test_opt_net
@@ -37,6 +38,7 @@ def get_args_from_command_line():
     parser.add_argument('--rand', dest='randomize', help='Randomize (do not use a fixed seed)', action='store_true')
     parser.add_argument('--train_stage1', dest='train_stage1', help='Train the reconstruction model', action='store_true')
     parser.add_argument('--train_stage2', dest='train_stage2', help='Train the update model', action='store_true')
+    parser.add_argument('--train_gan', dest='train_gan', help='Train the GAN model', action='store_true')
     parser.add_argument('--test', dest='test', help='Test neural networks', action='store_true')
     parser.add_argument('--evaluate', dest='evaluate', help='Evaluate neural networks', action='store_true')
     parser.add_argument('--evaluate_hand_draw', dest='evaluate_hand_draw', help='Evaluate neural networks by hand draw sketch', action='store_true')
@@ -83,6 +85,8 @@ def main():
         train_stage1_net(cfg)
     elif args.train_stage2:
         train_stage2_net(cfg)
+    elif args.train_gan:
+        train_gan_net(cfg)
     elif args.test:
         test_net(cfg)
     elif args.evaluate:
