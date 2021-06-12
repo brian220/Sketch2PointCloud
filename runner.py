@@ -18,11 +18,13 @@ from datetime import datetime as dt
 from pprint import pprint
 
 from config_gan import cfg
+# from config import cfg
 from core.train_stage1 import train_stage1_net
 from core.train_stage2 import train_stage2_net
 from core.train_gan import train_gan_net
 from core.test import test_net
 from core.evaluate import evaluate_net
+from core.evaluate_gan import evaluate_gan_net
 from core.test_opt import test_opt_net
 from core.evaluate_hand_draw import evaluate_hand_draw_net
 from core.evaluate_multi_view import evaluate_multi_view_net
@@ -41,6 +43,7 @@ def get_args_from_command_line():
     parser.add_argument('--train_gan', dest='train_gan', help='Train the GAN model', action='store_true')
     parser.add_argument('--test', dest='test', help='Test neural networks', action='store_true')
     parser.add_argument('--evaluate', dest='evaluate', help='Evaluate neural networks', action='store_true')
+    parser.add_argument('--evaluate_gan', dest='evaluate_gan', help='Evaluate neural networks (GAN version)', action='store_true')
     parser.add_argument('--evaluate_hand_draw', dest='evaluate_hand_draw', help='Evaluate neural networks by hand draw sketch', action='store_true')
     parser.add_argument('--evaluate_fixed_view', dest='evaluate_fixed_view', help='Evaluate neural networks in fixed views', action='store_true')
     parser.add_argument('--evaluate_multi_view', dest='evaluate_multi_view', help='Evaluate neural networks in multi views', action='store_true')
@@ -91,6 +94,8 @@ def main():
         test_net(cfg)
     elif args.evaluate:
         evaluate_net(cfg)
+    elif args.evaluate_gan:
+        evaluate_gan_net(cfg)
     elif args.evaluate_hand_draw:
         evaluate_hand_draw_net(cfg)
     elif args.evaluate_multi_view:

@@ -69,9 +69,15 @@ def train_gan_net(cfg):
         net = GRAPHX_GAN(cfg=cfg,
                          in_channels=3,
                          in_instances=cfg.GRAPHX.NUM_INIT_POINTS,
-                         optimizer_G=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.GRAPHX_LEARNING_RATE, weight_decay=cfg.TRAIN.GRAPHX_WEIGHT_DECAY),
+                         optimizer_G=lambda x: torch.optim.Adam(x, 
+                                                                lr=cfg.TRAIN.GENERATOR_LEARNING_RATE, 
+                                                                weight_decay=cfg.TRAIN.GENERATOR_WEIGHT_DECAY, 
+                                                                betas=cfg.TRAIN.BETAS),
                          scheduler_G=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
-                         optimizer_D=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.GRAPHX_LEARNING_RATE, weight_decay=cfg.TRAIN.GRAPHX_WEIGHT_DECAY),
+                         optimizer_D=lambda x: torch.optim.Adam(x, 
+                                                                lr=cfg.TRAIN.DISCRIMINATOR_LEARNINF_RATE,
+                                                                weight_decay=cfg.TRAIN.DISCRIMINATOR_WEIGHT_DECAY,
+                                                                betas=cfg.TRAIN.BETAS),
                          scheduler_D=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA), 
                          use_graphx=cfg.GRAPHX.USE_GRAPHX)
 

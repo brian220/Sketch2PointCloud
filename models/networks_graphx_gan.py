@@ -17,7 +17,8 @@ import torch.nn as nn
 from models.graphx import CNN18Encoder, PointCloudEncoder, PointCloudGraphXDecoder, PointCloudDecoder
 from models.projection_discriminator import ProjectionD
 from models.projection_depth import ComputeDepthMaps, N_VIEWS_PREDEFINED
-from losses.earth_mover_distance import EMD
+# from losses.earth_mover_distance import EMD
+import cuda.emd.emd_module as emd
 import utils.network_utils
 
 class GRAPHX_GAN(nn.Module):
@@ -73,7 +74,7 @@ class GRAPHX_GAN(nn.Module):
         self.loss = {}
 
         # emd loss
-        self.emd = EMD()
+        self.emd_dist = emd.emdModule()
         
         # GAN criterion
         self.criterionD = torch.nn.MSELoss()
@@ -87,7 +88,8 @@ class GRAPHX_GAN(nn.Module):
             self.model_D = torch.nn.DataParallel(self.model_D, device_ids=cfg.CONST.DEVICE).cuda()
             # Renderer
             self.renderer = torch.nn.DataParallel(self.renderer, device_ids=cfg.CONST.DEVICE).cuda()
-            self.emd = torch.nn.DataParallel(self.emd, device_ids=cfg.CONST.DEVICE).cuda()
+            # loss
+            self.emd_dist = torch.nn.DataParallel( self.emd_dist, device_ids=cfg.CONST.DEVICE).cuda()
             self.criterionD = torch.nn.DataParallel(self.criterionD, device_ids=cfg.CONST.DEVICE).cuda()
             self.cuda()
     
@@ -122,7 +124,10 @@ class GRAPHX_GAN(nn.Module):
         # reconstruct the point cloud
         pred_pc = self.reconstruction(input_imgs, init_pc)
         # compute reconstruction loss
-        rec_loss = torch.mean(self.emd(pred_pc, gt_pc))
+        emd_loss, _ = self.emd_dist(
+            pred_pc, gt_pc, eps=0.005, iters=50
+        )
+        rec_loss = torch.sqrt(emd_loss).mean(1).mean()
         rendered_pc = pred_pc
         
         # discriminator backward
@@ -132,7 +137,7 @@ class GRAPHX_GAN(nn.Module):
         errG, errG_D, fm_loss, im_loss = self.generator_backward(rec_loss)
 
         # store losses
-        self.loss["rec_loss"] = rec_loss
+        self.loss["rec_loss"] = rec_loss * 1000
         self.loss["errD_real"] = errD_real
         self.loss["errD_fake"] = errD_fake
         self.loss["errG"] = errG
@@ -147,9 +152,12 @@ class GRAPHX_GAN(nn.Module):
         # reconstruct the point cloud
         pred_pc = self.reconstruction(input_imgs, init_pc)
         # compute reconstruction loss
-        rec_loss = torch.mean(self.emd(pred_pc, gt_pc))
-
-        return rec_loss, pred_pc
+        emd_loss, _ = self.emd_dist(
+            pred_pc, gt_pc, eps=0.005, iters=50
+        )
+        rec_loss = torch.sqrt(emd_loss).mean(1).mean()
+        
+        return rec_loss*1000, pred_pc
     
     
     def reconstruction(self, input_imgs, init_pc):

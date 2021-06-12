@@ -118,5 +118,5 @@ def test_emd():
     print("Verified EMD: %lf" % np.sqrt(d.cpu().sum(-1)).mean())
 
 
-# test_emd()
+test_emd()
 

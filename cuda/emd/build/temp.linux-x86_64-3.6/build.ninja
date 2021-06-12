@@ -1,0 +1,27 @@
+ninja_required_version = 1.3
+cxx = c++
+nvcc = /usr/local/cuda-11.0/bin/nvcc
+
+cflags = -pthread -DNDEBUG -g -fwrapv -O2 -Wall -g -fdebug-prefix-map=/build/python3.6-CZCBJL/python3.6-3.6.13=. -specs=/usr/share/dpkg/no-pie-compile.specs -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -fPIC -I/media/caig/FECA2C89CA2C406F/sketch3D/2d_supervision/2d_sup/lib/python3.6/site-packages/torch/include -I/media/caig/FECA2C89CA2C406F/sketch3D/2d_supervision/2d_sup/lib/python3.6/site-packages/torch/include/torch/csrc/api/include -I/media/caig/FECA2C89CA2C406F/sketch3D/2d_supervision/2d_sup/lib/python3.6/site-packages/torch/include/TH -I/media/caig/FECA2C89CA2C406F/sketch3D/2d_supervision/2d_sup/lib/python3.6/site-packages/torch/include/THC -I/usr/local/cuda-11.0/include -I/media/caig/FECA2C89CA2C406F/sketch3D/2d_supervision/2d_sup/include -I/usr/include/python3.6m -c
+post_cflags = -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1011"' -DTORCH_EXTENSION_NAME=emd -D_GLIBCXX_USE_CXX11_ABI=0 -std=c++14
+cuda_cflags = -I/media/caig/FECA2C89CA2C406F/sketch3D/2d_supervision/2d_sup/lib/python3.6/site-packages/torch/include -I/media/caig/FECA2C89CA2C406F/sketch3D/2d_supervision/2d_sup/lib/python3.6/site-packages/torch/include/torch/csrc/api/include -I/media/caig/FECA2C89CA2C406F/sketch3D/2d_supervision/2d_sup/lib/python3.6/site-packages/torch/include/TH -I/media/caig/FECA2C89CA2C406F/sketch3D/2d_supervision/2d_sup/lib/python3.6/site-packages/torch/include/THC -I/usr/local/cuda-11.0/include -I/media/caig/FECA2C89CA2C406F/sketch3D/2d_supervision/2d_sup/include -I/usr/include/python3.6m -c
+cuda_post_cflags = -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ --expt-relaxed-constexpr --compiler-options ''"'"'-fPIC'"'"'' -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1011"' -DTORCH_EXTENSION_NAME=emd -D_GLIBCXX_USE_CXX11_ABI=0 -gencode=arch=compute_75,code=sm_75 -std=c++14
+ldflags = 
+
+rule compile
+  command = $cxx -MMD -MF $out.d $cflags -c $in -o $out $post_cflags
+  depfile = $out.d
+  deps = gcc
+
+rule cuda_compile
+  command = $nvcc $cuda_cflags -c $in -o $out $cuda_post_cflags
+
+
+
+build /media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/cuda/emd/build/temp.linux-x86_64-3.6/emd.o: compile /media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/cuda/emd/emd.cpp
+build /media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/cuda/emd/build/temp.linux-x86_64-3.6/emd_cuda.o: cuda_compile /media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/cuda/emd/emd_cuda.cu
+
+
+
+
+

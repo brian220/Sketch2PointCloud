@@ -22,14 +22,6 @@ import utils.network_utils
 
 from pyntcloud import PyntCloud
 
-partnet2shapenet = {
-        '176'  :  '39f5eecbfb2470846666a748bda83f67',
-        '41753':  'a58f8f1bd61094b3ff2c92c2a4f65876',
-        '2603' :  '27c00ec2b6ec279958e80128fd34c2b1',
-        '37247':  '484f0070df7d5375492d9da2668ec34c',
-        '36881':  '4231883e92a3c1a21c62d11641ffbd35'
-    }
-
 
 def init_pointcloud_loader(num_points):
     Z = np.random.rand(num_points) + 1.
@@ -44,13 +36,20 @@ def init_pointcloud_loader(num_points):
     return XYZ.astype('float32')
 
 
-def rec(cfg, img_path, weight_path):
+def evaluate_net(cfg):
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
     torch.backends.cudnn.benchmark = True
     
     eval_transforms = utils.data_transforms.Compose([
         utils.data_transforms.ToTensor(),
     ])
+
+    dataset_loader = utils.data_loaders.DATASET_LOADER_MAPPING[cfg.DATASET.TEST_DATASET](cfg)
+    eval_data_loader = torch.utils.data.DataLoader(dataset=dataset_loader.get_dataset(
+                                                   utils.data_loaders.DatasetType.TEST,  eval_transforms),
+                                                   batch_size=cfg.EVALUATE.BATCH_SIZE,
+                                                   num_workers=1,
+                                                   shuffle=False)
     
     # Set up networks
     # The parameters here need to be set in cfg
@@ -60,79 +59,65 @@ def rec(cfg, img_path, weight_path):
                                       in_instances=2048,
                                       optimizer=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.GRAPHX_LEARNING_RATE, weight_decay=cfg.TRAIN.GRAPHX_WEIGHT_DECAY),
                                       scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
+                                      pin_memory=True,
                                       use_graphx=cfg.GRAPHX.USE_GRAPHX)
     if torch.cuda.is_available():
         net = torch.nn.DataParallel(net).cuda()
     
     # Load weight
     # Load weight for encoder, decoder
-    print('[INFO] %s Loading reconstruction weights from %s ...' % (dt.now(), weight_path))
-    rec_checkpoint = torch.load(weight_path)
+    print('[INFO] %s Loading reconstruction weights from %s ...' % (dt.now(), cfg.EVALUATE.WEIGHT_PATH))
+    rec_checkpoint = torch.load(cfg.EVALUATE.WEIGHT_PATH)
     net.load_state_dict(rec_checkpoint['net'])
     print('[INFO] Best reconstruction result at epoch %d ...' % rec_checkpoint['epoch_idx'])
     epoch_id = int(rec_checkpoint['epoch_idx'])
     
     net.eval()
 
-    # load img
-    sample = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255.
-    sample = cv2.cvtColor(sample, cv2.COLOR_GRAY2RGB)
-
-    samples = []
-    samples.append(sample)
-    samples = np.array(samples).astype(np.float32) 
-    rendering_images = eval_transforms(rendering_images=samples)
-
-    # load init point clouds
-    init_point_cloud_np = init_pointcloud_loader(2048)
-    init_point_clouds = np.array([init_point_cloud_np])
-    init_point_clouds = torch.from_numpy(init_point_clouds)
-
-    # inference model
-    with torch.no_grad():
-        # Get data from data loader
-        input_imgs = utils.network_utils.var_or_cuda(rendering_images)
-        init_pc = utils.network_utils.var_or_cuda(init_point_clouds)
+    # Testing loop
+    for sample_idx, (taxonomy_names, sample_names, rendering_images,
+                    model_azi, model_ele,
+                    init_point_clouds, ground_truth_point_clouds) in enumerate(eval_data_loader):
         
-        pred_pc = net(input_imgs, init_pc)
-        
-        # Predict Pointcloud
-        g_pc = pred_pc[0].detach().cpu().numpy()
-    
-    return g_pc
+        print("evaluate sample: ", sample_idx)
+        with torch.no_grad():
+            # Only one image per sample
+            rendering_images = torch.squeeze(rendering_images, 1)
 
+            # Get data from data loader
+            rendering_images = utils.network_utils.var_or_cuda(rendering_images)
+            model_azi = utils.network_utils.var_or_cuda(model_azi)
+            model_ele = utils.network_utils.var_or_cuda(model_ele)
+            init_point_clouds = utils.network_utils.var_or_cuda(init_point_clouds)
+            ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
 
-def generate_gt(cfg, sample_id, view_id):
+            loss, pred_pc = net.module.loss(rendering_images, init_point_clouds, ground_truth_point_clouds, model_azi, model_ele)
 
-    shapenet_id = partnet2shapenet[sample_id]
+            img_dir = cfg.EVALUATE.OUTPUT_FOLDER
 
-    gt_pc_path = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/shape_net_core_uniform_samples_2048/03001627/%s.ply' % (shapenet_id)
-    gt_pc = PyntCloud.from_file(gt_pc_path)
-    gt_pc = np.array(gt_pc.points).astype(np.float32)
-
-    output_path = cfg.EVALUATE.OUT_PATH
-    outfolder = os.path.join(output_path, str(sample_id))
-    rendering_views = utils.point_cloud_visualization_old.get_point_cloud_image(gt_pc,
-                                                                                outfolder,
-                                                                                int(sample_id), view_id, "gt", view=[ 45*int(view_id + 1), 25])
-
-
-def evaluate_net(cfg):
-    sample_img_folder = cfg.EVALUATE.IMG_FOLDER
-    weight_path = cfg.EVALUATE.WEIGHT_PATH
-    
-    for partnet_id in partnet2shapenet.keys():
-        sample_id = partnet_id
-        for view_id in range(3):
-            img_path = os.path.join(sample_img_folder, str(sample_id), 'render_' + str(view_id) + '.png')
-    
-            g_pc = rec(cfg, img_path, weight_path)
-            print(g_pc.shape)
-        
-            output_path = cfg.EVALUATE.OUT_PATH
-            outfolder = os.path.join(output_path, str(sample_id))
-            rendering_views = utils.point_cloud_visualization_old.get_point_cloud_image(g_pc,
-                                                                                        outfolder,
-                                                                                        int(sample_id), view_id, "rec result", view=[ 45*int(view_id + 1), 25])
+            azi = model_azi[0].detach().cpu().numpy()*180./np.pi
+            ele = model_ele[0].detach().cpu().numpy()*180./np.pi + 90.
             
-            generate_gt(cfg, sample_id, view_id)
+            sample_name = sample_names[0]
+
+            # Predict Pointcloud
+            p_pc = pred_pc[0].detach().cpu().numpy()
+            rendering_views = utils.point_cloud_visualization_old.get_point_cloud_image(p_pc, 
+                                                                                        os.path.join(img_dir, str(sample_idx), 'rec results'),
+                                                                                        sample_idx,
+                                                                                        epoch_id,
+                                                                                        "rec results",
+                                                                                        view=[azi, ele])
+            
+            # Groundtruth Pointcloud
+            gt_pc = ground_truth_point_clouds[0].detach().cpu().numpy()
+            rendering_views = utils.point_cloud_visualization_old.get_point_cloud_image(gt_pc,
+                                                                                        os.path.join(img_dir, str(sample_idx), 'gt'),
+                                                                                        sample_idx,
+                                                                                        epoch_id,
+                                                                                        "gt",
+                                                                                        view=[azi, ele])
+            
+            if sample_idx == 100:
+                break
+

@@ -72,12 +72,12 @@ __C.GRAPHX.NUM_INIT_POINTS                 = 2048
 # GAN
 #
 __C.GAN                                    = edict()
-__C.GAN.WEIGHT_GAN                         = 1.
-__C.GAN.WEIGHT_REC                         = 1.
+__C.GAN.WEIGHT_GAN                         = 0.1
+__C.GAN.WEIGHT_REC                         = 200.
 __C.GAN.USE_FM_LOSS                        = True
-__C.GAN.WEIGHT_FM                          = 10.
+__C.GAN.WEIGHT_FM                          = 1.
 __C.GAN.USE_IM_LOSS                        = True
-__C.GAN.WEIGHT_IM                          = 10.
+__C.GAN.WEIGHT_IM                          = 1.
 
 #
 # RENDER
@@ -110,20 +110,16 @@ __C.TRAIN.RANDOM_BG_COLOR_RANGE             = [[225, 255], [225, 255], [225, 255
 __C.TRAIN.POLICY                            = 'adam'        # available options: sgd, adam
 
 # train parameters for graphx
-__C.TRAIN.GRAPHX_LEARNING_RATE              = 5e-5
-__C.TRAIN.GRAPHX_WEIGHT_DECAY               = 1e-5
-
-# train parameters for psgn fc
-__C.TRAIN.PSGN_FC_LEARNING_RATE             = 5e-5
-__C.TRAIN.PSGN_FC_CONV_WEIGHT_DECAY         = 1e-5
-__C.TRAIN.PSGN_FC_FC_WEIGHT_DECAY           = 1e-3
+__C.TRAIN.GENERATOR_LEARNING_RATE           = 1e-4
+__C.TRAIN.GENERATOR_WEIGHT_DECAY            = 0
+__C.TRAIN.DISCRIMINATOR_LEARNINF_RATE       = 4e-4
+__C.TRAIN.DISCRIMINATOR_WEIGHT_DECAY        = 0
 
 # __C.TRAIN.VIEW_ESTIMATOR_LEARNING_RATE      = 5e-4
 __C.TRAIN.MILESTONES                        = [400]
 __C.TRAIN.VIEW_ESTIMATOR_LR_MILESTONES      = [400]
-__C.TRAIN.BETAS                             = (.9, .999)
-__C.TRAIN.MOMENTUM                          = .9
-__C.TRAIN.GAMMA                             = .3
+__C.TRAIN.BETAS                             = (0.0, 0.9)
+__C.TRAIN.GAMMA                             = .5
 __C.TRAIN.SAVE_FREQ                         = 100            # weights will be overwritten every save_freq epoch
 __C.TRAIN.TRANS_LAMDA                       = 10
 
@@ -141,9 +137,9 @@ __C.TEST.RESULT_PATH                        = '/media/caig/FECA2C89CA2C406F/sket
 # Evaluating options
 #
 __C.EVALUATE                                = edict()
-__C.EVALUATE.IMG_FOLDER                     = '/media/caig/423ECD443ECD3229/dataset/shapenet_test_sketch/03001627'
-__C.EVALUATE.WEIGHT_PATH                    = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v20/checkpoints/best-rec-ckpt.pth'
-__C.EVALUATE.OUT_PATH                       = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/eval_output'
+__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/eval_output_gan/'
+__C.EVALUATE.WEIGHT_PATH                    = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v37/checkpoints/best-gan-ckpt.pth'
+__C.EVALUATE.BATCH_SIZE                     = 1
 
 #
 # Evaluate on the true habd draw image

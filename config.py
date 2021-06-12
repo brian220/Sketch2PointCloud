@@ -72,9 +72,6 @@ __C.GRAPHX                                 = edict()
 __C.GRAPHX.USE_GRAPHX                      = True
 __C.GRAPHX.NUM_INIT_POINTS                 = 2048
 
-
-cfg.GAN
-
 #
 # Updater
 #
@@ -143,9 +140,9 @@ __C.TEST.RESULT_PATH                        = '/media/caig/FECA2C89CA2C406F/sket
 # Evaluating options
 #
 __C.EVALUATE                                = edict()
-__C.EVALUATE.IMG_FOLDER                     = '/media/caig/423ECD443ECD3229/dataset/shapenet_test_sketch/03001627'
-__C.EVALUATE.WEIGHT_PATH                    = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v20/checkpoints/best-rec-ckpt.pth'
-__C.EVALUATE.OUT_PATH                       = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/eval_output'
+__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/eval_output_fix/'
+__C.EVALUATE.WEIGHT_PATH                    = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v27/checkpoints/best-rec-ckpt.pth'
+__C.EVALUATE.BATCH_SIZE                     = 1
 
 #
 # Evaluate on the true habd draw image
