@@ -50,7 +50,7 @@ __C.CONST.WEIGHTS                           = '/media/caig/FECA2C89CA2C406F/sket
 #
 __C.DIR                                     = edict()
 __C.DIR.OUT_PATH                            = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/output'
-__C.DIR.CONFIG_PATH                         = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/config_gan.py'
+__C.DIR.CONFIG_PATH                         = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/configs/config_gan.py'
 __C.DIR.RANDOM_BG_PATH                      = '/home/hzxie/Datasets/SUN2012/JPEGImages'
 
 #
@@ -170,18 +170,4 @@ __C.EVALUATE_MULTI_VIEW.RECONSTRUCTION_WEIGHTS      = '/media/caig/FECA2C89CA2C4
 __C.EVALUATE_MULTI_VIEW.UPDATE_WEIGHTS              = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v15/checkpoints/best-update-ckpt.pth'
 __C.EVALUATE_MULTI_VIEW.OUT_DIR                     = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_multi_view/outputs'
 
-#
-# Evaluate part
-# 
-__C.EVALUATE_PART_REC                               = edict()
-__C.EVALUATE_PART_REC.IMG_FOLDER                    = '/media/caig/423ECD443ECD3229/dataset/partnet_eval_data'
-__C.EVALUATE_PART_REC.SAMPLE_ID                     = 41753
-__C.EVALUATE_PART_REC.OUT_PATH                      = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/part_eval_output'
-
-#
-# Test time optimization
-#
-__C.TEST_OPT                                        = edict()
-__C.TEST_OPT.RECONSTRUCTION_WEIGHTS                 = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v1/checkpoints/best-reconstruction-ckpt.pth'
-__C.TEST_OPT.OUT_PATH                               = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/test_opt'
 

@@ -13,7 +13,7 @@ import torch.utils.data
 import cv2
 from datetime import datetime as dt
 
-from models.networks_graphx import Pixel2Pointcloud_GRAPHX
+from models.networks_graphx_rec import GRAPHX_REC_MODEL
 
 import utils.point_cloud_visualization_old
 import utils.data_loaders
@@ -36,7 +36,7 @@ def init_pointcloud_loader(num_points):
     return XYZ.astype('float32')
 
 
-def evaluate_net(cfg):
+def evaluate_rec_net(cfg):
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
     torch.backends.cudnn.benchmark = True
     
@@ -53,14 +53,14 @@ def evaluate_net(cfg):
     
     # Set up networks
     # The parameters here need to be set in cfg
-    if cfg.NETWORK.REC_MODEL == 'GRAPHX':
-        net = Pixel2Pointcloud_GRAPHX(cfg=cfg,
-                                      in_channels=3, 
-                                      in_instances=2048,
-                                      optimizer=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.GRAPHX_LEARNING_RATE, weight_decay=cfg.TRAIN.GRAPHX_WEIGHT_DECAY),
-                                      scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
-                                      pin_memory=True,
-                                      use_graphx=cfg.GRAPHX.USE_GRAPHX)
+    # Set up networks
+    # The parameters here need to be set in cfg
+    net = GRAPHX_REC_MODEL(
+        cfg=cfg,
+        optimizer=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.GRAPHX_LEARNING_RATE, weight_decay=cfg.TRAIN.GRAPHX_WEIGHT_DECAY),
+        scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
+    )
+    
     if torch.cuda.is_available():
         net = torch.nn.DataParallel(net).cuda()
     

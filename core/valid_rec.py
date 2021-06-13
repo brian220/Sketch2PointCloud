@@ -24,23 +24,14 @@ import utils.view_pred_utils
 
 from datetime import datetime as dt
 
-idtodegree = [
-    [0, 0],
-    [45, 0],
-    [90, 0],
-    [135, 0],
-    [180, 0],
-    [225, 0],
-    [270, 0],
-    [325, 0]
-]
-
-def valid_stage1_net(cfg,
-             epoch_idx=-1,
-             output_dir=None,
-             test_data_loader=None,
-             test_writer=None,
-             net=None):
+def valid_rec_net(
+    cfg,
+    epoch_idx=-1,
+    output_dir=None,
+    test_data_loader=None,
+    test_writer=None,
+    net=None
+    ):
 
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
     torch.backends.cudnn.benchmark = True
@@ -67,7 +58,7 @@ def valid_stage1_net(cfg,
             init_point_clouds = utils.network_utils.var_or_cuda(init_point_clouds)
             ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
 
-            loss, pred_pc = net.module.loss(rendering_images, init_point_clouds, ground_truth_point_clouds, model_azi, model_ele)
+            loss, pred_pc = net.module.valid_step(rendering_images, init_point_clouds, ground_truth_point_clouds)
             reconstruction_loss = loss.cpu().detach().data.numpy()
 
             # Append loss and accuracy to average metrics

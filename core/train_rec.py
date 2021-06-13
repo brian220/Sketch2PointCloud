@@ -22,11 +22,11 @@ from datetime import datetime as dt
 from tensorboardX import SummaryWriter
 from time import time
 
-from core.valid_stage1 import valid_stage1_net
+from core.valid_rec import valid_rec_net
 from models.networks_psgn import Pixel2Pointcloud_PSGN_FC
-from models.networks_graphx import Pixel2Pointcloud_GRAPHX
+from models.networks_graphx_rec import GRAPHX_REC_MODEL
 
-def train_stage1_net(cfg):
+def train_rec_net(cfg):
     print("cuda is available?", torch.cuda.is_available())
     print("Let's use", torch.cuda.device_count(), "GPUs!")
 
@@ -66,18 +66,11 @@ def train_stage1_net(cfg):
 
     # Set up networks
     # The parameters here need to be set in cfg
-    if cfg.NETWORK.REC_MODEL == 'GRAPHX':
-        net = Pixel2Pointcloud_GRAPHX(cfg=cfg,
-                                      in_channels=3, 
-                                      in_instances=cfg.GRAPHX.NUM_INIT_POINTS,
-                                      optimizer=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.GRAPHX_LEARNING_RATE, weight_decay=cfg.TRAIN.GRAPHX_WEIGHT_DECAY),
-                                      scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
-                                      use_graphx=cfg.GRAPHX.USE_GRAPHX)
-    elif cfg.NETWORK.REC_MODEL == 'PSGN_FC':
-        net = Pixel2Pointcloud_PSGN_FC(cfg=cfg,
-                                       optimizer_conv=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.PSGN_FC_LEARNING_RATE, weight_decay=cfg.TRAIN.PSGN_FC_CONV_WEIGHT_DECAY),
-                                       optimizer_fc=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.PSGN_FC_LEARNING_RATE, weight_decay=cfg.TRAIN.PSGN_FC_FC_WEIGHT_DECAY),
-                                       scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA))
+    net = GRAPHX_REC_MODEL(
+        cfg=cfg,
+        optimizer=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.GRAPHX_LEARNING_RATE, weight_decay=cfg.TRAIN.GRAPHX_WEIGHT_DECAY),
+        scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
+    )
 
     if torch.cuda.is_available():
        net = torch.nn.DataParallel(net, device_ids=cfg.CONST.DEVICE).cuda()
@@ -141,7 +134,7 @@ def train_stage1_net(cfg):
             ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
             
             # net give out a point cloud
-            loss = net.module.learn(rendering_images, init_point_clouds, ground_truth_point_clouds, model_azi, model_ele)
+            loss = net.module.train_step(rendering_images, init_point_clouds, ground_truth_point_clouds)
             
             reconstruction_losses.update(loss)
 
@@ -153,13 +146,14 @@ def train_stage1_net(cfg):
                 '[INFO] %s [Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) \
                  Total_loss = %.4f'
                 % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val, data_time.val, loss))
-            
+            break
               
         # Append epoch loss to TensorBoard
         train_writer.add_scalar('Total/EpochLoss_Rec', reconstruction_losses.avg, epoch_idx + 1)
+       
 
         # Validate the training models
-        current_loss = valid_stage1_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, net)
+        current_loss = valid_rec_net(cfg, epoch_idx + 1, output_dir, val_data_loader, val_writer, net)
         
         # Save weights to file
         if (epoch_idx + 1) % cfg.TRAIN.SAVE_FREQ == 0:

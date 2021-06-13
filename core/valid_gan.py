@@ -70,7 +70,7 @@ def valid_gan_net(cfg,
                 # Predict Pointcloud
                 p_pc = pred_pc[0].detach().cpu().numpy()
                 rendering_views = utils.point_cloud_visualization_old.get_point_cloud_image(p_pc, os.path.join(img_dir, 'test'),
-                                                                                        sample_idx, epoch_idx, "reconstruction")
+                                                                                        sample_idx, epoch_idx, "GAN reconstruction")
                 test_writer.add_image('Test Sample#%02d/Point Cloud Reconstructed' % sample_idx, rendering_views, epoch_idx)
                 
                 # Groundtruth Pointcloud

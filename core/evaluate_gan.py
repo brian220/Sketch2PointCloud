@@ -13,7 +13,7 @@ import torch.utils.data
 import cv2
 from datetime import datetime as dt
 
-from models.networks_graphx_gan import GRAPHX_GAN
+from models.networks_graphx_gan import GRAPHX_GAN_MODEL
 
 import utils.point_cloud_visualization_old
 import utils.data_loaders

@@ -23,7 +23,7 @@ from tensorboardX import SummaryWriter
 from time import time
 
 from core.valid_gan import valid_gan_net
-from models.networks_graphx_gan import GRAPHX_GAN
+from models.networks_graphx_gan import GRAPHX_GAN_MODEL
 
 def train_gan_net(cfg):
     print("cuda is available?", torch.cuda.is_available())
@@ -65,21 +65,19 @@ def train_gan_net(cfg):
     
     # Set up networks
     # The parameters here need to be set in cfg
-    if cfg.NETWORK.REC_MODEL == 'GRAPHX':
-        net = GRAPHX_GAN(cfg=cfg,
-                         in_channels=3,
-                         in_instances=cfg.GRAPHX.NUM_INIT_POINTS,
-                         optimizer_G=lambda x: torch.optim.Adam(x, 
-                                                                lr=cfg.TRAIN.GENERATOR_LEARNING_RATE, 
-                                                                weight_decay=cfg.TRAIN.GENERATOR_WEIGHT_DECAY, 
-                                                                betas=cfg.TRAIN.BETAS),
-                         scheduler_G=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
-                         optimizer_D=lambda x: torch.optim.Adam(x, 
-                                                                lr=cfg.TRAIN.DISCRIMINATOR_LEARNINF_RATE,
-                                                                weight_decay=cfg.TRAIN.DISCRIMINATOR_WEIGHT_DECAY,
-                                                                betas=cfg.TRAIN.BETAS),
-                         scheduler_D=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA), 
-                         use_graphx=cfg.GRAPHX.USE_GRAPHX)
+    net = GRAPHX_GAN_MODEL(
+        cfg=cfg,
+        optimizer_G=lambda x: torch.optim.Adam(x, 
+                                               lr=cfg.TRAIN.GENERATOR_LEARNING_RATE, 
+                                               weight_decay=cfg.TRAIN.GENERATOR_WEIGHT_DECAY, 
+                                               betas=cfg.TRAIN.BETAS),
+        scheduler_G=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
+        optimizer_D=lambda x: torch.optim.Adam(x, 
+                                               lr=cfg.TRAIN.DISCRIMINATOR_LEARNINF_RATE,
+                                               weight_decay=cfg.TRAIN.DISCRIMINATOR_WEIGHT_DECAY,
+                                               betas=cfg.TRAIN.BETAS),
+        scheduler_D=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA)
+    )
 
     if torch.cuda.is_available():
        net = torch.nn.DataParallel(net, device_ids=cfg.CONST.DEVICE).cuda()

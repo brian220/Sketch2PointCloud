@@ -14,36 +14,31 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from models.graphx import CNN18Encoder, PointCloudEncoder, PointCloudGraphXDecoder, PointCloudDecoder
+from models.graphx_rec import Graphx_Rec
 from models.projection_discriminator import ProjectionD
 from models.projection_depth import ComputeDepthMaps, N_VIEWS_PREDEFINED
-# from losses.earth_mover_distance import EMD
+
 import cuda.emd.emd_module as emd
 import utils.network_utils
 
-class GRAPHX_GAN(nn.Module):
+class GRAPHX_GAN_MODEL(nn.Module):
     def __init__(self, 
                  cfg,
-                 in_channels,
-                 in_instances,
-                 activation=nn.ReLU(),
                  optimizer_G=None,
                  scheduler_G=None,
                  optimizer_D=None,
-                 scheduler_D=None, 
-                 use_graphx=True,
-                 **kwargs):
+                 scheduler_D=None):
         
         super().__init__()
         self.cfg = cfg
         
         # Graphx Generator
-        self.img_enc = CNN18Encoder(in_channels, activation)
-        out_features = [block[-2].out_channels for block in self.img_enc.children()]
-        self.pc_enc = PointCloudEncoder(3, out_features, cat_pc=True, use_adain=True, use_proj=True, 
-                                        activation=activation)
-        deform_net = PointCloudGraphXDecoder if use_graphx else PointCloudDecoder
-        self.pc = deform_net(2 * sum(out_features) + 3, in_instances=in_instances, activation=activation)
+        self.model_G = Graphx_Rec(
+            cfg=cfg,
+            in_channels=3,
+            in_instances=cfg.GRAPHX.NUM_INIT_POINTS,
+            activation=nn.ReLU(),
+        )
 
         # Projection Discriminator
         self.model_D = ProjectionD(
@@ -59,16 +54,12 @@ class GRAPHX_GAN(nn.Module):
         ).float()
 
         # OptimizerG
-        self.optimizer_G = None if optimizer_G is None else optimizer_G(chain(self.img_enc.parameters(), 
-                                                                              self.pc_enc.parameters(),
-                                                                              self.pc.parameters()))
+        self.optimizer_G = None if optimizer_G is None else optimizer_G(self.model_G.parameters())
         self.scheduler_G = None if scheduler_G or optimizer_G is None else scheduler_G(self.optimizer_G)
 
         # OptimizerD
         self.optimizer_D = None if optimizer_D is None else optimizer_D(self.model_D.parameters())
         self.scheduler_D = None if scheduler_D or optimizer_D is None else scheduler_D(self.optimizer_D)
-        
-        self.kwargs = kwargs
         
         # a dict store the losses for each step
         self.loss = {}
@@ -81,15 +72,13 @@ class GRAPHX_GAN(nn.Module):
 
         if torch.cuda.is_available():
             # Generator
-            self.img_enc = torch.nn.DataParallel(self.img_enc, device_ids=cfg.CONST.DEVICE).cuda()
-            self.pc_enc = torch.nn.DataParallel(self.pc_enc, device_ids=cfg.CONST.DEVICE).cuda()
-            self.pc = torch.nn.DataParallel(self.pc, device_ids=cfg.CONST.DEVICE).cuda()
+            self.model_G = torch.nn.DataParallel(self.model_G, device_ids=cfg.CONST.DEVICE).cuda()
             # Discriminator
             self.model_D = torch.nn.DataParallel(self.model_D, device_ids=cfg.CONST.DEVICE).cuda()
             # Renderer
             self.renderer = torch.nn.DataParallel(self.renderer, device_ids=cfg.CONST.DEVICE).cuda()
             # loss
-            self.emd_dist = torch.nn.DataParallel( self.emd_dist, device_ids=cfg.CONST.DEVICE).cuda()
+            self.emd_dist = torch.nn.DataParallel(self.emd_dist, device_ids=cfg.CONST.DEVICE).cuda()
             self.criterionD = torch.nn.DataParallel(self.criterionD, device_ids=cfg.CONST.DEVICE).cuda()
             self.cuda()
     
@@ -161,10 +150,9 @@ class GRAPHX_GAN(nn.Module):
     
     
     def reconstruction(self, input_imgs, init_pc):
-        img_feats = self.img_enc(input_imgs)
-        pc_feats = self.pc_enc(img_feats, init_pc)
-        return self.pc(pc_feats)
-    
+        pred_pc = self.model_G(input_imgs, init_pc)
+        return pred_pc
+        
 
     def discriminator_backward(self, input_imgs, gt_pc, rendered_pc):
         '''

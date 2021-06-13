@@ -22,12 +22,12 @@ import utils.rotation_eval
 
 from datetime import datetime as dt
 
-from models.networks_graphx import Pixel2Pointcloud_GRAPHX
+from models.networks_graphx_rec import GRAPHX_REC_MODEL
 
 from losses.chamfer_loss import ChamferLoss
 from losses.earth_mover_distance import EMD
 
-def test_net(cfg):
+def test_rec_net(cfg):
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
     torch.backends.cudnn.benchmark = True
 
@@ -44,13 +44,11 @@ def test_net(cfg):
 
     # Set up networks
     # The parameters here need to be set in cfg
-    if cfg.NETWORK.REC_MODEL == 'GRAPHX':
-        net = Pixel2Pointcloud_GRAPHX(cfg=cfg,
-                                      in_channels=3, 
-                                      in_instances=cfg.GRAPHX.NUM_INIT_POINTS,
-                                      optimizer=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.GRAPHX_LEARNING_RATE, weight_decay=cfg.TRAIN.GRAPHX_WEIGHT_DECAY),
-                                      scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
-                                      use_graphx=cfg.GRAPHX.USE_GRAPHX)
+    net = GRAPHX_REC_MODEL(
+        cfg=cfg,
+        optimizer=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.GRAPHX_LEARNING_RATE, weight_decay=cfg.TRAIN.GRAPHX_WEIGHT_DECAY),
+        scheduler=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
+    )
     
     if torch.cuda.is_available():
         net = torch.nn.DataParallel(net).cuda()

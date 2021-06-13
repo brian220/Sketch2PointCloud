@@ -17,45 +17,36 @@ from argparse import ArgumentParser
 from datetime import datetime as dt
 from pprint import pprint
 
-from config_gan import cfg
+from configs.config_rec import cfg as cfg_rec
+from configs.config_gan import cfg as cfg_gan
+
 # from config import cfg
-from core.train_stage1 import train_stage1_net
-from core.train_stage2 import train_stage2_net
+from core.train_rec import train_rec_net
+
 from core.train_gan import train_gan_net
-from core.test import test_net
-from core.evaluate import evaluate_net
+
+
+from core.test_rec import test_rec_net
+from core.test_gan import test_gan_net
+
+from core.evaluate_rec import evaluate_rec_net
 from core.evaluate_gan import evaluate_gan_net
-from core.test_opt import test_opt_net
-from core.evaluate_hand_draw import evaluate_hand_draw_net
-from core.evaluate_multi_view import evaluate_multi_view_net
-from core.evaluate_part_rec import evaluate_part_rec_net
 
 def get_args_from_command_line():
-    parser = ArgumentParser(description='Parser of Runner of Pix2Vox')
-    parser.add_argument('--gpu',
-                        dest='gpu_id',
-                        help='GPU device id to use [cuda0]',
-                        default=cfg.CONST.DEVICE,
-                        type=str)
-    parser.add_argument('--rand', dest='randomize', help='Randomize (do not use a fixed seed)', action='store_true')
-    parser.add_argument('--train_stage1', dest='train_stage1', help='Train the reconstruction model', action='store_true')
-    parser.add_argument('--train_stage2', dest='train_stage2', help='Train the update model', action='store_true')
+    parser = ArgumentParser(description='Parser of Runner of Sketch To Pointcloud')
+    
+    parser.add_argument('--train_rec', dest='train_rec', help='Train the reconstruction model', action='store_true')
     parser.add_argument('--train_gan', dest='train_gan', help='Train the GAN model', action='store_true')
-    parser.add_argument('--test', dest='test', help='Test neural networks', action='store_true')
-    parser.add_argument('--evaluate', dest='evaluate', help='Evaluate neural networks', action='store_true')
+    parser.add_argument('--train_refine', dest='train_refine', help='Train the update model', action='store_true')
+
+    parser.add_argument('--test_rec', dest='test_rec', help='Test neural networks', action='store_true')
+    parser.add_argument('--test_gan', dest='test_gan', help='Test neural networks', action='store_true')
+    parser.add_argument('--test_refine', dest='test_refine', help='Test neural networks', action='store_true')
+
+    parser.add_argument('--evaluate_rec', dest='evaluate_rec', help='Evaluate neural networks', action='store_true')
     parser.add_argument('--evaluate_gan', dest='evaluate_gan', help='Evaluate neural networks (GAN version)', action='store_true')
-    parser.add_argument('--evaluate_hand_draw', dest='evaluate_hand_draw', help='Evaluate neural networks by hand draw sketch', action='store_true')
-    parser.add_argument('--evaluate_fixed_view', dest='evaluate_fixed_view', help='Evaluate neural networks in fixed views', action='store_true')
-    parser.add_argument('--evaluate_multi_view', dest='evaluate_multi_view', help='Evaluate neural networks in multi views', action='store_true')
-    parser.add_argument('--evaluate_part_rec', dest='evaluate_part_rec', help='Evaluate neural networks by part reconstruction', action='store_true')
-    parser.add_argument('--batch-size',
-                        dest='batch_size',
-                        help='name of the net',
-                        default=cfg.CONST.BATCH_SIZE,
-                        type=int)
-    parser.add_argument('--test_opt', dest='test_opt', help='Test time optimization', action='store_true')
-    parser.add_argument('--epoch', dest='epoch', help='number of epoches', default=cfg.TRAIN.NUM_EPOCHES, type=int)
-    parser.add_argument('--out', dest='out_path', help='Set output path', default=cfg.DIR.OUT_PATH)
+    parser.add_argument('--evaluate_refine', dest='evaluate_refine', help='Evaluate neural networks (GAN version)', action='store_true')
+
     args = parser.parse_args()
     return args
 
@@ -64,46 +55,37 @@ def main():
     # Get args from command line
     args = get_args_from_command_line()
 
-    if args.gpu_id is not None:
-        cfg.CONST.DEVICE = args.gpu_id
-    if not args.randomize:
-        np.random.seed(cfg.CONST.RNG_SEED)
-    if args.batch_size is not None:
-        cfg.CONST.BATCH_SIZE = args.batch_size
-    if args.epoch is not None:
-        cfg.TRAIN.NUM_EPOCHES = args.epoch
-    if args.out_path is not None:
-        cfg.DIR.OUT_PATH = args.out_path
-
     # Print config
     print('Use config:')
-    pprint(cfg)
+    if args.train_rec or args.test_rec or args.evaluate_rec:
+        model_cfg = cfg_rec
+    elif args.train_gan or args.test_gan or args.evaluate_gan:
+        model_cfg = cfg_gan
+
+    # Print config 
+    pprint(model_cfg)
     
     # Set GPU to use
-    if type(cfg.CONST.DEVICE) == str:
-        os.environ["CUDA_VISIBLE_DEVICES"] = cfg.CONST.DEVICE
+    if type(model_cfg.CONST.DEVICE) == str:
+        os.environ["CUDA_VISIBLE_DEVICES"] = model_cfg.CONST.DEVICE
 
     # Start train/test process
-    if args.train_stage1:
-        train_stage1_net(cfg)
-    elif args.train_stage2:
-        train_stage2_net(cfg)
+    # Train
+    if args.train_rec:
+        train_rec_net(model_cfg)
     elif args.train_gan:
-        train_gan_net(cfg)
-    elif args.test:
-        test_net(cfg)
-    elif args.evaluate:
-        evaluate_net(cfg)
+        train_gan_net(model_cfg)
+    # Test
+    elif args.test_rec:
+        test_rec_net(model_cfg)
+    elif args.test_gan:
+        test_gan_net(model_cfg)
+    # Evaluate
+    elif args.evaluate_rec:
+        evaluate_rec_net(model_cfg)
     elif args.evaluate_gan:
-        evaluate_gan_net(cfg)
-    elif args.evaluate_hand_draw:
-        evaluate_hand_draw_net(cfg)
-    elif args.evaluate_multi_view:
-        evaluate_multi_view_net(cfg)
-    elif args.evaluate_part_rec:
-        evaluate_part_rec_net(cfg)
-    elif args.test_opt:
-        test_opt_net(cfg)
+        evaluate_gan_net(model_cfg)
+        
     else:
         print("Please specify the arguments (--train, --test, --evaluate)")
 
