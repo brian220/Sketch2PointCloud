@@ -65,12 +65,11 @@ def sample_spherical(n_points):
 
 class ShapeNetDataset(torch.utils.data.dataset.Dataset):
     """ShapeNetDataset class used for PyTorch DataLoader"""
-    def __init__(self, cfg, dataset_type, file_list, init_num_points, rec_model, transforms=None):
+    def __init__(self, cfg, dataset_type, file_list, init_num_points, transforms=None):
         self.cfg = cfg
         self.dataset_type = dataset_type
         self.file_list = file_list
         self.init_num_points = init_num_points
-        self.rec_model = rec_model
         self.transforms = transforms
 
     def __len__(self):
@@ -159,8 +158,6 @@ class ShapeNetDataLoader:
         self.class_name = cfg.DATASET.CLASS
         self.init_num_points = cfg.GRAPHX.NUM_INIT_POINTS
         
-        self.rec_model = cfg.NETWORK.REC_MODEL
-        
         # Load all taxonomies of the dataset
         with open(cfg.DATASETS.SHAPENET.TAXONOMY_FILE_PATH, encoding='utf-8') as file:
             self.dataset_taxonomy = json.loads(file.read())
@@ -184,7 +181,7 @@ class ShapeNetDataLoader:
         files = self.get_files_of_taxonomy(taxonomy_folder_name, samples)
 
         print('[INFO] %s Complete collecting files of the dataset. Total files: %d.' % (dt.now(), len(files)))
-        return ShapeNetDataset(self.cfg, dataset_type, files, self.init_num_points, self.rec_model, transforms)
+        return ShapeNetDataset(self.cfg, dataset_type, files, self.init_num_points, transforms)
         
     def get_files_of_taxonomy(self, taxonomy_folder_name, samples):
         files_of_taxonomy = []

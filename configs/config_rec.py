@@ -44,10 +44,10 @@ __C.CONST.DEVICE_NUM                        = 1
 __C.CONST.RNG_SEED                          = 0
 __C.CONST.IMG_W                             = 224       # Image width for input
 __C.CONST.IMG_H                             = 224       # Image height for input
-__C.CONST.BATCH_SIZE                        = 4
+__C.CONST.BATCH_SIZE                        = 8
 __C.CONST.BIN_SIZE                          = 15
 __C.CONST.NUM_POINTS                        = 2048
-__C.CONST.WEIGHTS                           = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/output/checkpoints/ckpt-epoch-0600.pth'
+__C.CONST.WEIGHTS                           = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/output/checkpoints/ckpt-epoch-0500.pth'
 
 #
 # Directories
@@ -61,7 +61,7 @@ __C.DIR.RANDOM_BG_PATH                      = '/home/hzxie/Datasets/SUN2012/JPEG
 # Network
 #
 __C.NETWORK                                 = edict()
-__C.NETWORK.REC_MODEL                       = 'GRAPHX' # GRAPHX or PSGN_FC
+__C.NETWORK.REC_MODEL                       = 'GRAPHX_REC' # GRAPHX or PSGN_FC
 __C.NETWORK.LEAKY_VALUE                     = .2
 __C.NETWORK.TCONV_USE_BIAS                  = False
 
@@ -71,36 +71,15 @@ __C.NETWORK.TCONV_USE_BIAS                  = False
 __C.GRAPHX                                 = edict()
 __C.GRAPHX.USE_GRAPHX                      = True
 __C.GRAPHX.NUM_INIT_POINTS                 = 2048
-
-#
-# Updater
-#
-__C.UPDATER                               = edict()
-__C.UPDATER.RANGE_MAX                     = 0.2
-__C.UPDATER.LEARNING_RATE                 = 1e-3
-__C.UPDATER.NOISE_LENGTH                  = 32
-__C.UPDATER.PC_ENCODE_MODULE              = 'Pointnet++'
-__C.UPDATER.PC_DECODE_MODULE              = 'Graphx'
-
-
-#
-# Updater
-#
-__C.REFINE                                 = edict()
-__C.REFINE.USE_PRETRAIN_GENERATOR          = True
-__C.REFINE.GENERATOR_WEIGHTS               = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v27/checkpoints/best-rec-ckpt.pth'
-__C.REFINE.START_EPOCH                     = 1000
-__C.REFINE.EDGERES_LEARNING_RATE           = 1e-4
-__C.REFINE.EDGERES_WEIGHT_DECAY            = 0
-__C.REFINE.EDGERES_BETAS                   = (0.0, 0.9)
+__C.GRAPHX.RETURN_IMG_FEATURES             = False
 
 #
 # Training
 #
 __C.TRAIN                                   = edict()
-__C.TRAIN.RESUME_TRAIN                      = False
+__C.TRAIN.RESUME_TRAIN                      = True
 __C.TRAIN.NUM_WORKER                        = 4             # number of data workers
-__C.TRAIN.NUM_EPOCHES                       = 1100
+__C.TRAIN.NUM_EPOCHES                       = 1000
 __C.TRAIN.BRIGHTNESS                        = .4
 __C.TRAIN.CONTRAST                          = .4
 __C.TRAIN.SATURATION                        = .4
@@ -109,8 +88,8 @@ __C.TRAIN.RANDOM_BG_COLOR_RANGE             = [[225, 255], [225, 255], [225, 255
 __C.TRAIN.POLICY                            = 'adam'        # available options: sgd, adam
 
 # train parameters for graphx
-__C.TRAIN.GRAPHX_LEARNING_RATE              = 5e-5
-__C.TRAIN.GRAPHX_WEIGHT_DECAY               = 1e-5
+__C.TRAIN.GRAPHX_LEARNING_RATE              = 1e-4
+__C.TRAIN.GRAPHX_WEIGHT_DECAY               = 0
 
 # train parameters for psgn fc
 __C.TRAIN.PSGN_FC_LEARNING_RATE             = 5e-5
@@ -120,9 +99,8 @@ __C.TRAIN.PSGN_FC_FC_WEIGHT_DECAY           = 1e-3
 # __C.TRAIN.VIEW_ESTIMATOR_LEARNING_RATE      = 5e-4
 __C.TRAIN.MILESTONES                        = [400]
 __C.TRAIN.VIEW_ESTIMATOR_LR_MILESTONES      = [400]
-__C.TRAIN.BETAS                             = (.9, .999)
-__C.TRAIN.MOMENTUM                          = .9
-__C.TRAIN.GAMMA                             = .3
+__C.TRAIN.BETAS                             = (0.0, 0.9)
+__C.TRAIN.GAMMA                             = .5
 __C.TRAIN.SAVE_FREQ                         = 100            # weights will be overwritten every save_freq epoch
 __C.TRAIN.TRANS_LAMDA                       = 10
 
@@ -140,8 +118,8 @@ __C.TEST.RESULT_PATH                        = '/media/caig/FECA2C89CA2C406F/sket
 # Evaluating options
 #
 __C.EVALUATE                                = edict()
-__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/eval_output_fix/'
-__C.EVALUATE.WEIGHT_PATH                    = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v27/checkpoints/best-rec-ckpt.pth'
+__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/eval_output_gan_1000/'
+__C.EVALUATE.WEIGHT_PATH                    = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v38/checkpoints/best-rec-ckpt.pth'
 __C.EVALUATE.BATCH_SIZE                     = 1
 
 #

@@ -12,6 +12,7 @@ import torch.backends.cudnn
 import torch.utils.data
 import cv2
 from datetime import datetime as dt
+from collections import OrderedDict
 
 from models.networks_graphx_rec import GRAPHX_REC_MODEL
 
@@ -72,6 +73,26 @@ def evaluate_rec_net(cfg):
     print('[INFO] Best reconstruction result at epoch %d ...' % rec_checkpoint['epoch_idx'])
     epoch_id = int(rec_checkpoint['epoch_idx'])
     
+    
+    '''
+    print('[INFO] %s Recovering from %s ...' % (dt.now(), cfg.EVALUATE.WEIGHT_PATH))
+    net_dict = net.state_dict()
+    pretrained_dict = torch.load(cfg.EVALUATE.WEIGHT_PATH)
+    pretrained_weight_dict = pretrained_dict['net']
+    new_weight_dict = OrderedDict()
+    for k, v in pretrained_weight_dict.items():
+        name = k
+        name = name.replace('module.', '')
+        name = 'module.reconstructor.module.' + name
+        # name = name[:]
+        if name in net_dict:
+            new_weight_dict[name] = v
+    
+    net_dict.update(new_weight_dict)
+    net.load_state_dict(net_dict)
+    epoch_id = int(pretrained_dict['epoch_idx'])
+    '''
+
     net.eval()
 
     # Testing loop
@@ -91,7 +112,7 @@ def evaluate_rec_net(cfg):
             init_point_clouds = utils.network_utils.var_or_cuda(init_point_clouds)
             ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
 
-            loss, pred_pc = net.module.loss(rendering_images, init_point_clouds, ground_truth_point_clouds, model_azi, model_ele)
+            loss, pred_pc = net.module.valid_step(rendering_images, init_point_clouds, ground_truth_point_clouds)
 
             img_dir = cfg.EVALUATE.OUTPUT_FOLDER
 
@@ -106,7 +127,7 @@ def evaluate_rec_net(cfg):
                                                                                         os.path.join(img_dir, str(sample_idx), 'rec results'),
                                                                                         sample_idx,
                                                                                         epoch_id,
-                                                                                        "rec results",
+                                                                                        "sketch",
                                                                                         view=[azi, ele])
             
             # Groundtruth Pointcloud
@@ -118,6 +139,6 @@ def evaluate_rec_net(cfg):
                                                                                         "gt",
                                                                                         view=[azi, ele])
             
-            if sample_idx == 100:
+            if sample_idx == 200:
                 break
 

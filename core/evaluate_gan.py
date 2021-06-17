@@ -50,23 +50,22 @@ def evaluate_gan_net(cfg):
                                                    batch_size=cfg.EVALUATE.BATCH_SIZE,
                                                    num_workers=1,
                                                    shuffle=False)
-    
+                                                   
     # Set up networks
     # The parameters here need to be set in cfg
-    net = GRAPHX_GAN(cfg=cfg,
-                     in_channels=3,
-                     in_instances=cfg.GRAPHX.NUM_INIT_POINTS,
-                     optimizer_G=lambda x: torch.optim.Adam(x, 
-                                                            lr=cfg.TRAIN.GENERATOR_LEARNING_RATE, 
-                                                            weight_decay=cfg.TRAIN.GENERATOR_WEIGHT_DECAY, 
-                                                            betas=cfg.TRAIN.BETAS),
-                     scheduler_G=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
-                     optimizer_D=lambda x: torch.optim.Adam(x, 
-                                                            lr=cfg.TRAIN.DISCRIMINATOR_LEARNINF_RATE,
-                                                            weight_decay=cfg.TRAIN.DISCRIMINATOR_WEIGHT_DECAY,
-                                                            betas=cfg.TRAIN.BETAS),
-                     scheduler_D=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA), 
-                     use_graphx=cfg.GRAPHX.USE_GRAPHX)
+    net = GRAPHX_GAN_MODEL(
+        cfg=cfg,
+        optimizer_G=lambda x: torch.optim.Adam(x, 
+                                               lr=cfg.TRAIN.GENERATOR_LEARNING_RATE, 
+                                               weight_decay=cfg.TRAIN.GENERATOR_WEIGHT_DECAY, 
+                                               betas=cfg.TRAIN.BETAS),
+        scheduler_G=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA),
+        optimizer_D=lambda x: torch.optim.Adam(x, 
+                                               lr=cfg.TRAIN.DISCRIMINATOR_LEARNINF_RATE,
+                                               weight_decay=cfg.TRAIN.DISCRIMINATOR_WEIGHT_DECAY,
+                                               betas=cfg.TRAIN.BETAS),
+        scheduler_D=lambda x: MultiStepLR(x, milestones=cfg.TRAIN.MILESTONES, gamma=cfg.TRAIN.GAMMA)
+    )
     
 
     if torch.cuda.is_available():
@@ -114,7 +113,7 @@ def evaluate_gan_net(cfg):
                                                                                         os.path.join(img_dir, str(sample_idx), 'rec results'),
                                                                                         sample_idx,
                                                                                         epoch_id,
-                                                                                        "rec results",
+                                                                                        "GAN",
                                                                                         view=[azi, ele])
             
             # Groundtruth Pointcloud
@@ -126,6 +125,6 @@ def evaluate_gan_net(cfg):
                                                                                         "gt",
                                                                                         view=[azi, ele])
             
-            if sample_idx == 100:
+            if sample_idx == 200:
                 break
 

@@ -134,8 +134,7 @@ class GRAPHX_GAN_MODEL(nn.Module):
         self.loss["fm_loss"] = fm_loss
         self.loss["im_loss"] = im_loss
         
-        return self.loss, pred_pc
-    
+        return self.loss
 
     def valid_step(self, input_imgs, init_pc, gt_pc):
         # reconstruct the point cloud
@@ -148,12 +147,10 @@ class GRAPHX_GAN_MODEL(nn.Module):
         
         return rec_loss*1000, pred_pc
     
-    
     def reconstruction(self, input_imgs, init_pc):
-        pred_pc = self.model_G(input_imgs, init_pc)
+        pred_pc, _ = self.model_G(input_imgs, init_pc)
         return pred_pc
         
-
     def discriminator_backward(self, input_imgs, gt_pc, rendered_pc):
         '''
         Input:

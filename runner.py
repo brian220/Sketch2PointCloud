@@ -19,12 +19,11 @@ from pprint import pprint
 
 from configs.config_rec import cfg as cfg_rec
 from configs.config_gan import cfg as cfg_gan
+from configs.config_refine import cfg as cfg_refine
 
-# from config import cfg
 from core.train_rec import train_rec_net
-
 from core.train_gan import train_gan_net
-
+from core.train_refine import train_refine_net
 
 from core.test_rec import test_rec_net
 from core.test_gan import test_gan_net
@@ -61,6 +60,8 @@ def main():
         model_cfg = cfg_rec
     elif args.train_gan or args.test_gan or args.evaluate_gan:
         model_cfg = cfg_gan
+    elif args.train_refine or args.test_refine or args.evaluate_refine:
+        model_cfg = cfg_refine
 
     # Print config 
     pprint(model_cfg)
@@ -75,6 +76,8 @@ def main():
         train_rec_net(model_cfg)
     elif args.train_gan:
         train_gan_net(model_cfg)
+    elif args.train_refine:
+        train_refine_net(model_cfg)
     # Test
     elif args.test_rec:
         test_rec_net(model_cfg)

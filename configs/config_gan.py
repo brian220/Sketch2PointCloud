@@ -57,7 +57,7 @@ __C.DIR.RANDOM_BG_PATH                      = '/home/hzxie/Datasets/SUN2012/JPEG
 # Network
 #
 __C.NETWORK                                 = edict()
-__C.NETWORK.REC_MODEL                       = 'GRAPHX' # GRAPHX or PSGN_FC
+__C.NETWORK.REC_MODEL                       = 'GRAPHX_GAN' # GRAPHX_GAN, GRAPHX_REC or PSGN_FC
 __C.NETWORK.LEAKY_VALUE                     = .2
 __C.NETWORK.TCONV_USE_BIAS                  = False
 
@@ -67,6 +67,7 @@ __C.NETWORK.TCONV_USE_BIAS                  = False
 __C.GRAPHX                                 = edict()
 __C.GRAPHX.USE_GRAPHX                      = True
 __C.GRAPHX.NUM_INIT_POINTS                 = 2048
+__C.GRAPHX.RETURN_IMG_FEATURES             = False
 
 #
 # GAN
@@ -137,8 +138,8 @@ __C.TEST.RESULT_PATH                        = '/media/caig/FECA2C89CA2C406F/sket
 # Evaluating options
 #
 __C.EVALUATE                                = edict()
-__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/eval_output_gan/'
-__C.EVALUATE.WEIGHT_PATH                    = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v37/checkpoints/best-gan-ckpt.pth'
+__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/eval_output_gan_1000/'
+__C.EVALUATE.WEIGHT_PATH                    = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v39/checkpoints/best-gan-ckpt.pth'
 __C.EVALUATE.BATCH_SIZE                     = 1
 
 #

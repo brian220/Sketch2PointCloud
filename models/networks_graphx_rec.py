@@ -44,24 +44,6 @@ class GRAPHX_REC_MODEL(nn.Module):
             self.emd_dist = torch.nn.DataParallel(self.emd_dist, device_ids=cfg.CONST.DEVICE).cuda()
             self.cuda()
 
-
-    def reconstruction(self, input_imgs, init_pc):
-        pred_pc = self.reconstructor(input_imgs, init_pc)
-        return pred_pc
-
-    
-    def valid_step(self, input_imgs, init_pc, gt_pc):
-        # reconstruct the point cloud
-        pred_pc = self.reconstruction(input_imgs, init_pc)
-        # compute reconstruction loss
-        emd_loss, _ = self.emd_dist(
-            pred_pc, gt_pc, eps=0.005, iters=50
-        )
-        rec_loss = torch.sqrt(emd_loss).mean(1).mean()
-        
-        return rec_loss*1000, pred_pc
-    
-
     def train_step(self, input_imgs, init_pc, gt_pc):
         # reconstruct the point cloud
         pred_pc = self.reconstruction(input_imgs, init_pc)
@@ -74,14 +56,27 @@ class GRAPHX_REC_MODEL(nn.Module):
         self.reconstructor_backward(rec_loss)
 
         rec_loss_np = rec_loss.detach().item()
-
+        
         return rec_loss_np*1000
 
-
+    def valid_step(self, input_imgs, init_pc, gt_pc):
+        # reconstruct the point cloud
+        pred_pc = self.reconstruction(input_imgs, init_pc)
+        # compute reconstruction loss
+        emd_loss, _ = self.emd_dist(
+            pred_pc, gt_pc, eps=0.005, iters=50
+        )
+        rec_loss = torch.sqrt(emd_loss).mean(1).mean()
+        
+        return rec_loss*1000, pred_pc
+    
+    def reconstruction(self, input_imgs, init_pc):
+        pred_pc, _ = self.reconstructor(input_imgs, init_pc)
+        return pred_pc
+        
     def reconstructor_backward(self, rec_loss):
         self.train(True)
         self.optimizer.zero_grad()
         rec_loss.backward()
         self.optimizer.step()
-        del rec_loss
         

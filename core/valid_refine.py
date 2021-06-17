@@ -24,13 +24,14 @@ import utils.view_pred_utils
 
 from datetime import datetime as dt
 
-def valid_stage2_net(cfg,
-             epoch_idx=-1,
-             output_dir=None,
-             test_data_loader=None,
-             test_writer=None,
-             rec_net=None,
-             refine_net=None):
+def valid_refine_net(
+    cfg,
+    epoch_idx=-1,
+    output_dir=None,
+    test_data_loader=None,
+    test_writer=None,
+    rec_net=None,
+    refine_net=None):
 
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
     torch.backends.cudnn.benchmark = True
@@ -62,9 +63,9 @@ def valid_stage2_net(cfg,
             #                Test the network                 #
             #=================================================#
             # rec net give out a coarse point cloud
-            coarse_pc = rec_net(rendering_images, init_point_clouds)
+            coarse_pc, img_feats = rec_net(rendering_images, init_point_clouds)
             # refine net give out a refine result
-            loss, refine_pc = refine_net.module.loss(rendering_images, coarse_pc, ground_truth_point_clouds, model_x, model_y)
+            loss, refine_pc = refine_net.module.valid_step(img_feats, coarse_pc, ground_truth_point_clouds, model_x, model_y)
 
             loss = loss.cpu().detach().data.numpy()
 

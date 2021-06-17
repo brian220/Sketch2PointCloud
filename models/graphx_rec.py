@@ -31,4 +31,5 @@ class Graphx_Rec(nn.Module):
     def forward(self, input, init_pc):
         img_feats = self.img_enc(input)
         pc_feats = self.pc_enc(img_feats, init_pc)
-        return self.pc(pc_feats)
+
+        return self.pc(pc_feats), img_feats
