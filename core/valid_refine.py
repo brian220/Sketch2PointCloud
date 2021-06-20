@@ -44,16 +44,18 @@ def valid_refine_net(
     refine_net.eval()
 
     # Testing loop
-    for sample_idx, (taxonomy_names, sample_names, rendering_images,
+    for sample_idx, (taxonomy_names, sample_names, rendering_images, update_images,
                     model_x, model_y,
                     init_point_clouds, ground_truth_point_clouds) in enumerate(test_data_loader):
 
         with torch.no_grad():
             # Only one image per sample
             rendering_images = torch.squeeze(rendering_images, 1)
-
+            update_images = torch.squeeze(update_images, 1)
+ 
             # Get data from data loader
             rendering_images = utils.network_utils.var_or_cuda(rendering_images)
+            update_images = utils.network_utils.var_or_cuda(update_images)
             model_x = utils.network_utils.var_or_cuda(model_x)
             model_y = utils.network_utils.var_or_cuda(model_y)
             init_point_clouds = utils.network_utils.var_or_cuda(init_point_clouds)
@@ -63,9 +65,9 @@ def valid_refine_net(
             #                Test the network                 #
             #=================================================#
             # rec net give out a coarse point cloud
-            coarse_pc, img_feats = rec_net(rendering_images, init_point_clouds)
+            coarse_pc, _ = rec_net(rendering_images, init_point_clouds)
             # refine net give out a refine result
-            loss, refine_pc = refine_net.module.valid_step(img_feats, coarse_pc, ground_truth_point_clouds, model_x, model_y)
+            loss, refine_pc = refine_net.module.valid_step(update_images, coarse_pc, ground_truth_point_clouds, model_x, model_y)
 
             loss = loss.cpu().detach().data.numpy()
 

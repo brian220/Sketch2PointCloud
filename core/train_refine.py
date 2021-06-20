@@ -137,7 +137,7 @@ def train_refine_net(cfg):
 
         batch_end_time = time()
         n_batches = len(train_data_loader)
-        for batch_idx, (taxonomy_names, sample_names, rendering_images,
+        for batch_idx, (taxonomy_names, sample_names, rendering_images, update_images,
                         model_x, model_y,
                         init_point_clouds, ground_truth_point_clouds) in enumerate(train_data_loader):
 
@@ -146,16 +146,18 @@ def train_refine_net(cfg):
     
             # Only one image per batch
             rendering_images = torch.squeeze(rendering_images, 1)
+            update_images = torch.squeeze(update_images, 1)
 
             # Get data from data loader
             rendering_images = utils.network_utils.var_or_cuda(rendering_images)
+            update_images = utils.network_utils.var_or_cuda(update_images)
             model_x = utils.network_utils.var_or_cuda(model_x)
             model_y = utils.network_utils.var_or_cuda(model_y)
             init_point_clouds = utils.network_utils.var_or_cuda(init_point_clouds)
             ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
             
-            coarse_pc, img_feats = rec_net(rendering_images, init_point_clouds)
-            loss = refine_net.module.train_step(img_feats, coarse_pc, ground_truth_point_clouds, model_x, model_y)
+            coarse_pc, _ = rec_net(rendering_images, init_point_clouds)
+            loss = refine_net.module.train_step(update_images, coarse_pc, ground_truth_point_clouds, model_x, model_y)
             
             losses.update(loss)
 

@@ -14,6 +14,7 @@ __C.DATASETS                                = edict()
 __C.DATASETS.SHAPENET                       = edict()
 __C.DATASETS.SHAPENET.TAXONOMY_FILE_PATH    = './datasets/rec.json'
 __C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/423ECD443ECD3229/new_dataset/shapenet_24_fix/%s/%s/render_%d.png'
+__C.DATASETS.SHAPENET.UPDATE_PATH           = '/media/caig/423ECD443ECD3229/new_dataset/shapenet_24_empty_ann_sketch/%s/%s/render_empty_%d.png'
 __C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/shape_net_core_uniform_samples_2048/%s/%s.ply'
 __C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/423ECD443ECD3229/new_dataset/shapenet_24_fix/%s/%s/view.txt'
 
@@ -31,8 +32,8 @@ __C.DATASET.RENDER_VIEWS                    = 24
 
 __C.DATASET.MEAN                            = [0.5, 0.5, 0.5]
 __C.DATASET.STD                             = [0.5, 0.5, 0.5]
-__C.DATASET.TRAIN_DATASET                   = 'ShapeNetFix'
-__C.DATASET.TEST_DATASET                    = 'ShapeNetFix'
+__C.DATASET.TRAIN_DATASET                   = 'ShapeNetFixRefine'
+__C.DATASET.TEST_DATASET                    = 'ShapeNetFixRefine'
 __C.DATASET.CLASS                           = 'chair'
 
 #
@@ -44,7 +45,7 @@ __C.CONST.DEVICE_NUM                        = 1
 __C.CONST.RNG_SEED                          = 0
 __C.CONST.IMG_W                             = 224       # Image width for input
 __C.CONST.IMG_H                             = 224       # Image height for input
-__C.CONST.BATCH_SIZE                        = 8
+__C.CONST.BATCH_SIZE                        = 4
 __C.CONST.BIN_SIZE                          = 15
 __C.CONST.NUM_POINTS                        = 2048
 __C.CONST.WEIGHTS                           = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/output/checkpoints/ckpt-epoch-0600.pth'
@@ -54,7 +55,7 @@ __C.CONST.WEIGHTS                           = '/media/caig/FECA2C89CA2C406F/sket
 #
 __C.DIR                                     = edict()
 __C.DIR.OUT_PATH                            = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/output'
-__C.DIR.CONFIG_PATH                         = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/configs/config_rec.py'
+__C.DIR.CONFIG_PATH                         = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/configs/config_refine.py'
 __C.DIR.RANDOM_BG_PATH                      = '/home/hzxie/Datasets/SUN2012/JPEGImages'
 
 #
@@ -77,7 +78,7 @@ __C.GRAPHX.RETURN_IMG_FEATURES             = False
 #
 __C.REFINE                                 = edict()
 __C.REFINE.USE_PRETRAIN_GENERATOR          = True
-__C.REFINE.GENERATOR_WEIGHTS               = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/test_ckpt/best-gan-ckpt.pth'
+__C.REFINE.GENERATOR_WEIGHTS               = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v39/checkpoints/best-gan-ckpt.pth'
 __C.REFINE.GENERATOR_TYPE                  = 'GAN'
 __C.REFINE.START_EPOCH                     = 1000
 __C.REFINE.RANGE_MAX                       = 0.2

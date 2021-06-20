@@ -137,8 +137,7 @@ def train_gan_net(cfg):
             init_point_clouds = utils.network_utils.var_or_cuda(init_point_clouds)
             ground_truth_point_clouds = utils.network_utils.var_or_cuda(ground_truth_point_clouds)
             
-            # net give out a point cloud
-            loss, pred_pc = net.module.train_step(rendering_images, init_point_clouds, ground_truth_point_clouds)
+            loss = net.module.train_step(rendering_images, init_point_clouds, ground_truth_point_clouds)
             
             rec_losses.update(loss["rec_loss"])
             errD_reals.update(loss["errD_real"])

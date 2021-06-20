@@ -26,72 +26,6 @@ def wrapper(func, *args, **kwargs):
     return Wrapper()
 
 
-class CNN18Encoder(nn.Module):
-    """
-    Image multi-scale encoder
-    
-    Input:
-        input: input images
-
-    Output:
-        feats: Multi-scale image features
-    """
-    def __init__(self, in_channels, activation=nn.ReLU()):
-        super().__init__()
-
-        self.block1 = nn.Sequential()
-        self.block1.conv1 = Conv(in_channels, 16, 3, padding=1)
-        self.block1.relu1 = activation
-        self.block1.conv2 = Conv(16, 16, 3, padding=1)
-        self.block1.relu2 = activation
-        self.block1.conv3 = Conv(16, 32, 3, stride=2, padding=1)
-        self.block1.relu3 = activation
-        self.block1.conv4 = Conv(32, 32, 3, padding=1)
-        self.block1.relu4 = activation
-        self.block1.conv5 = Conv(32, 32, 3, padding=1)
-        self.block1.relu5 = activation
-        self.block1.conv6 = Conv(32, 64, 3, stride=2, padding=1)
-        self.block1.relu6 = activation
-        self.block1.conv7 = Conv(64, 64, 3, padding=1)
-        self.block1.relu7 = activation
-        self.block1.conv8 = Conv(64, 64, 3, padding=1)
-        self.block1.relu8 = activation
-
-        self.block3 = nn.Sequential()
-        self.block3.conv1 = Conv(64, 128, 3, stride=2, padding=1)
-        self.block3.relu1 = activation
-        self.block3.conv2 = Conv(128, 128, 3, padding=1)
-        self.block3.relu2 = activation
-        self.block3.conv3 = Conv(128, 128, 3, padding=1)
-        self.block3.relu3 = activation
-
-        self.block4 = nn.Sequential()
-        self.block4.conv1 = Conv(128, 256, 5, stride=2, padding=2)
-        self.block4.relu1 = activation
-        self.block4.conv2 = Conv(256, 256, 3, padding=1)
-        self.block4.relu2 = activation
-        self.block4.conv3 = Conv(256, 256, 3, padding=1)
-        self.block4.relu3 = activation
-
-        self.block5 = nn.Sequential()
-        self.block5.conv1 = Conv(256, 512, 5, stride=2, padding=2)
-        self.block5.relu1 = activation
-        self.block5.conv2 = Conv(512, 512, 3, padding=1)
-        self.block5.relu2 = activation
-        self.block5.conv3 = Conv(512, 512, 3, padding=1)
-        self.block5.relu3 = activation
-        self.block5.conv4 = Conv(512, 512, 3, padding=1)
-        self.block5.relu4 = activation
-
-    def forward(self, input):
-        feats = []
-        output = input
-        for block in self.children():
-            output = block(output)
-            feats.append(output)
-        return feats
-
-
 class TransformPC(nn.Module):
     """
     Transform point cloud to camera coordinate
@@ -330,7 +264,7 @@ class GRAPHX_REFINE_MODEL(nn.Module):
         super().__init__()
         self.cfg = cfg
         
-        self.img_enc = CNN18Encoder(in_channels, activation=nn.ReLU())
+        # Refinement
         self.transform_pc = TransformPC(cfg)
         self.feature_projection = FeatureProjection(cfg)
         self.pc_encode = PointNet2(cfg)
@@ -342,15 +276,14 @@ class GRAPHX_REFINE_MODEL(nn.Module):
         self.emd_dist = emd.emdModule()
 
         if torch.cuda.is_available():
-            self.img_enc = torch.nn.DataParallel(self.img_enc, device_ids=cfg.CONST.DEVICE).cuda()
             self.transform_pc = torch.nn.DataParallel(self.transform_pc, device_ids=cfg.CONST.DEVICE).cuda()
             self.feature_projection = torch.nn.DataParallel(self.feature_projection, device_ids=cfg.CONST.DEVICE).cuda()
             self.pc_encode = torch.nn.DataParallel(self.pc_encode, device_ids=cfg.CONST.DEVICE).cuda()
             self.displacement_net = torch.nn.DataParallel(self.displacement_net, device_ids=cfg.CONST.DEVICE).cuda()
             self.emd_dist = torch.nn.DataParallel(self.emd_dist, device_ids=cfg.CONST.DEVICE).cuda()
             self.cuda()
-
-    def train_step(self, update_img, xyz, gt_pc, view_az, view_el):
+    
+    def train_step(self, img_features, xyz, gt_pc, view_az, view_el):
         '''
         Input:
             img_features
@@ -363,7 +296,7 @@ class GRAPHX_REFINE_MODEL(nn.Module):
             loss
             pred_pc:    [B, N, 3]
         '''
-        refine_pc = self.refine(update_img, xyz, view_az, view_el)
+        refine_pc = self.refine(img_features, xyz, view_az, view_el)
         # compute reconstruction loss
         emd_loss, _ = self.emd_dist(
             refine_pc, gt_pc, eps=0.005, iters=50
@@ -376,9 +309,9 @@ class GRAPHX_REFINE_MODEL(nn.Module):
 
         return rec_loss_np*1000
 
-    def valid_step(self, update_img, xyz, gt_pc, view_az, view_el):
+    def valid_step(self, img_features, xyz, gt_pc, view_az, view_el):
         # refine the point cloud
-        refine_pc = self.refine(update_img, xyz, view_az, view_el)
+        refine_pc = self.refine(img_features, xyz, view_az, view_el)
         # compute reconstruction loss
         emd_loss, _ = self.emd_dist(
             refine_pc, gt_pc, eps=0.005, iters=50
@@ -387,8 +320,8 @@ class GRAPHX_REFINE_MODEL(nn.Module):
 
         return rec_loss*1000, pred_pc
 
-    def refine(self, update_img, xyz, view_az, view_el):
-        img_features = self.img_enc(update_img)
+    def refine(self, img_features, xyz, view_az, view_el):
+        # img_features = self.img_enc(img)
         transform_xyz = self.transform_pc(xyz, view_az, view_el)
         proj_features = self.feature_projection(img_features, transform_xyz)
         pc_features = self.pc_encode(transform_xyz)

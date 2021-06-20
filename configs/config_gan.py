@@ -13,9 +13,9 @@ cfg                                         = __C
 __C.DATASETS                                = edict()
 __C.DATASETS.SHAPENET                       = edict()
 __C.DATASETS.SHAPENET.TAXONOMY_FILE_PATH    = './datasets/rec.json'
-__C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/423ECD443ECD3229/new_dataset/shapenet_24_fix/%s/%s/render_%d.png'
+__C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/423ECD443ECD3229/new_dataset/shapenet_24_color/%s/%s/render_%d.png'
 __C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/shape_net_core_uniform_samples_2048/%s/%s.ply'
-__C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/423ECD443ECD3229/new_dataset/shapenet_24_fix/%s/%s/view.txt'
+__C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/423ECD443ECD3229/new_dataset/shapenet_24_color/%s/%s/view.txt'
 __C.DATASETS.SHAPENET.HAND_DRAW_IMG_PATH    = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/hand_draw_img'
 
 #
@@ -26,8 +26,8 @@ __C.DATASET.RENDER_VIEWS                    = 24
 
 __C.DATASET.MEAN                            = [0.5, 0.5, 0.5]
 __C.DATASET.STD                             = [0.5, 0.5, 0.5]
-__C.DATASET.TRAIN_DATASET                   = 'ShapeNetFix'
-__C.DATASET.TEST_DATASET                    = 'ShapeNetFix'
+__C.DATASET.TRAIN_DATASET                   = 'ShapeNetColor'
+__C.DATASET.TEST_DATASET                    = 'ShapeNetColor'
 __C.DATASET.CLASS                           = 'chair'
 __C.DATASET.NUM_CLASSES                     = 0
 
@@ -138,8 +138,8 @@ __C.TEST.RESULT_PATH                        = '/media/caig/FECA2C89CA2C406F/sket
 # Evaluating options
 #
 __C.EVALUATE                                = edict()
-__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/eval_output_gan_1000/'
-__C.EVALUATE.WEIGHT_PATH                    = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v39/checkpoints/best-gan-ckpt.pth'
+__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/eval_output_gan_color_1000/'
+__C.EVALUATE.WEIGHT_PATH                    = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v42/checkpoints/best-gan-ckpt.pth'
 __C.EVALUATE.BATCH_SIZE                     = 1
 
 #
