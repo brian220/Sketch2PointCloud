@@ -334,6 +334,7 @@ class ShapeNetRefineDataset(torch.utils.data.dataset.Dataset):
         
         # convert to np array
         rendering_images = np.array(rendering_images).astype(np.float32)
+        update_images = np.array(update_images).astype(np.float32)
         model_azi = np.array(model_azi).astype(np.float32)
         model_ele = np.array(model_ele).astype(np.float32)
         

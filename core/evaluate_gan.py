@@ -112,8 +112,8 @@ def evaluate_gan_net(cfg):
             rendering_views = utils.point_cloud_visualization_old.get_point_cloud_image(p_pc, 
                                                                                         os.path.join(img_dir, str(sample_idx), 'rec results'),
                                                                                         sample_idx,
-                                                                                        epoch_id,
-                                                                                        "GAN",
+                                                                                        cfg.EVALUATE.VERSION_ID,
+                                                                                        "",
                                                                                         view=[azi, ele])
             
             # Groundtruth Pointcloud
@@ -121,8 +121,8 @@ def evaluate_gan_net(cfg):
             rendering_views = utils.point_cloud_visualization_old.get_point_cloud_image(gt_pc,
                                                                                         os.path.join(img_dir, str(sample_idx), 'gt'),
                                                                                         sample_idx,
-                                                                                        epoch_id,
-                                                                                        "gt",
+                                                                                        cfg.EVALUATE.VERSION_ID,
+                                                                                        "",
                                                                                         view=[azi, ele])
             
             if sample_idx == 200:

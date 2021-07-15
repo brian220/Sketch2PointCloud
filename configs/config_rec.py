@@ -111,14 +111,16 @@ __C.TEST                                    = edict()
 __C.TEST.RANDOM_BG_COLOR_RANGE              = [[240, 240], [240, 240], [240, 240]]
 __C.TEST.VOXEL_THRESH                       = [.2, .3, .4, .5]
 __C.TEST.NUM_WORKER                         = 4             # number of data workers
-__C.TEST.RECONSTRUCTION_WEIGHTS             = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v20/checkpoints/best-rec-ckpt.pth'
-__C.TEST.RESULT_PATH                        = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/test.txt'
+__C.TEST.BATCH_SIZE                         = 1
+__C.TEST.WEIGHT_PATH                        = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v38/checkpoints/best-rec-ckpt.pth'
+__C.TEST.RESULT_PATH                        = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/eval_6_28_meeting/eval_v38/test_v38.txt'
 
 #
 # Evaluating options
 #
 __C.EVALUATE                                = edict()
-__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/eval_output_gan_1000/'
+__C.EVALUATE.VERSION_ID                     = 38
+__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/eval_6_28_meeting/eval_v38/'
 __C.EVALUATE.WEIGHT_PATH                    = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v38/checkpoints/best-rec-ckpt.pth'
 __C.EVALUATE.BATCH_SIZE                     = 1
 

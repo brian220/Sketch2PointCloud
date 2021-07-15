@@ -27,9 +27,11 @@ from core.train_refine import train_refine_net
 
 from core.test_rec import test_rec_net
 from core.test_gan import test_gan_net
+from core.test_refine import test_refine_net
 
 from core.evaluate_rec import evaluate_rec_net
 from core.evaluate_gan import evaluate_gan_net
+from core.evaluate_refine import evaluate_refine_net
 
 def get_args_from_command_line():
     parser = ArgumentParser(description='Parser of Runner of Sketch To Pointcloud')
@@ -83,12 +85,17 @@ def main():
         test_rec_net(model_cfg)
     elif args.test_gan:
         test_gan_net(model_cfg)
+    elif args.test_refine:
+        test_refine_net(model_cfg)
+
     # Evaluate
     elif args.evaluate_rec:
         evaluate_rec_net(model_cfg)
     elif args.evaluate_gan:
         evaluate_gan_net(model_cfg)
-        
+    elif args.evaluate_refine:
+        evaluate_refine_net(model_cfg)
+    
     else:
         print("Please specify the arguments (--train, --test, --evaluate)")
 

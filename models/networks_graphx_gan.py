@@ -168,7 +168,7 @@ class GRAPHX_GAN_MODEL(nn.Module):
         # create rendering imgs (real , fake)
         real_render_imgs_dict = {}
         gen_render_imgs_dict = {}
-        random_radius = random.sample(self.cfg.RENDER.radius_list, 1)[0]
+        random_radius = random.sample(self.cfg.RENDER.RADIUS_LIST, 1)[0]
         random_view_ids = list(range(0, N_VIEWS_PREDEFINED, 1))
 
         for _view_id in random_view_ids:

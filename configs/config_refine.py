@@ -14,9 +14,10 @@ __C.DATASETS                                = edict()
 __C.DATASETS.SHAPENET                       = edict()
 __C.DATASETS.SHAPENET.TAXONOMY_FILE_PATH    = './datasets/rec.json'
 __C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/423ECD443ECD3229/new_dataset/shapenet_24_fix/%s/%s/render_%d.png'
-__C.DATASETS.SHAPENET.UPDATE_PATH           = '/media/caig/423ECD443ECD3229/new_dataset/shapenet_24_empty_ann_sketch/%s/%s/render_empty_%d.png'
+__C.DATASETS.SHAPENET.UPDATE_PATH           = '/media/caig/423ECD443ECD3229/new_dataset/shapenet_24_sketch_thin/%s/%s/render_thin_%d.png'
+# __C.DATASETS.SHAPENET.UPDATE_PATH           = '/media/caig/423ECD443ECD3229/new_dataset/shapenet_24_empty_ann_sketch/%s/%s/render_empty_%d.png'
 __C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/shape_net_core_uniform_samples_2048/%s/%s.ply'
-__C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/423ECD443ECD3229/new_dataset/shapenet_24_fix/%s/%s/view.txt'
+__C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/423ECD443ECD3229/new_dataset/shapenet_24_sketch_thin/%s/%s/view.txt'
 
 __C.DATASETS.SHAPENET.HAND_DRAW_IMG_PATH    = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/hand_draw_img'
 
@@ -40,12 +41,14 @@ __C.DATASET.CLASS                           = 'chair'
 # Common
 #
 __C.CONST                                   = edict()
+# __C.CONST.DEVICE                            = [0, 1]
+# __C.CONST.DEVICE_NUM                        = 2
 __C.CONST.DEVICE                            = [0]
 __C.CONST.DEVICE_NUM                        = 1
 __C.CONST.RNG_SEED                          = 0
 __C.CONST.IMG_W                             = 224       # Image width for input
 __C.CONST.IMG_H                             = 224       # Image height for input
-__C.CONST.BATCH_SIZE                        = 4
+__C.CONST.BATCH_SIZE                        = 8
 __C.CONST.BIN_SIZE                          = 15
 __C.CONST.NUM_POINTS                        = 2048
 __C.CONST.WEIGHTS                           = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/output/checkpoints/ckpt-epoch-0600.pth'
@@ -123,15 +126,19 @@ __C.TEST                                    = edict()
 __C.TEST.RANDOM_BG_COLOR_RANGE              = [[240, 240], [240, 240], [240, 240]]
 __C.TEST.VOXEL_THRESH                       = [.2, .3, .4, .5]
 __C.TEST.NUM_WORKER                         = 4             # number of data workers
-__C.TEST.RECONSTRUCTION_WEIGHTS             = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v20/checkpoints/best-rec-ckpt.pth'
-__C.TEST.RESULT_PATH                        = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/test.txt'
+__C.TEST.BATCH_SIZE                         = 1
+__C.TEST.GENERATOR_WEIGHTS                  = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v39/checkpoints/best-gan-ckpt.pth'
+__C.TEST.REFINER_WEIGHTS                    = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v46/checkpoints/best-refine-ckpt.pth'
+__C.TEST.RESULT_PATH                        = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/eval_6_28_meeting/eval_v46/test_v46.txt'
 
 #
 # Evaluating options
 #
 __C.EVALUATE                                = edict()
-__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/eval_output_fix/'
-__C.EVALUATE.WEIGHT_PATH                    = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v27/checkpoints/best-rec-ckpt.pth'
+__C.EVALUATE.VERSION_ID                     = 47
+__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/eval_v47/'
+__C.EVALUATE.GENERATOR_WEIGHTS              = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v39/checkpoints/best-gan-ckpt.pth'
+__C.EVALUATE.REFINER_WEIGHTS                = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v47/checkpoints/best-refine-ckpt.pth'
 __C.EVALUATE.BATCH_SIZE                     = 1
 
 #

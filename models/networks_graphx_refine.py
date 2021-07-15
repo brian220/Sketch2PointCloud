@@ -385,14 +385,15 @@ class GRAPHX_REFINE_MODEL(nn.Module):
         )
         rec_loss = torch.sqrt(emd_loss).mean(1).mean()
 
-        return rec_loss*1000, pred_pc
+        return rec_loss*1000, refine_pc
 
     def refine(self, update_img, xyz, view_az, view_el):
         img_features = self.img_enc(update_img)
         transform_xyz = self.transform_pc(xyz, view_az, view_el)
         proj_features = self.feature_projection(img_features, transform_xyz)
         pc_features = self.pc_encode(transform_xyz)
-        noises = torch.normal(mean=0.0, std=1, size=(self.cfg.CONST.BATCH_SIZE, self.cfg.CONST.NUM_POINTS, self.cfg.REFINE.NOISE_LENGTH))
+        batch_size = xyz.size(0)
+        noises = torch.normal(mean=0.0, std=1, size=(batch_size, self.cfg.CONST.NUM_POINTS, self.cfg.REFINE.NOISE_LENGTH))
         displacements = self.displacement_net(transform_xyz, proj_features, pc_features, noises)
         displacements = displacements.transpose(2, 1)
         refine_pc = xyz + displacements
