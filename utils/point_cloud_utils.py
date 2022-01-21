@@ -1,3 +1,4 @@
+import os, sys
 import torch
 
 class Scale(torch.nn.Module):
@@ -91,3 +92,31 @@ class Scale_one(torch.nn.Module):
         gt_scaled = (gt.permute(2, 1, 0) * scaling_factor_gt).permute(2, 1, 0) + torch.reshape(adjustment_factor_gt.permute(1, 0), (-1, 1, 3))
     
         return gt_scaled
+
+
+def output_point_cloud_ply(xyzs, names, output_dir):
+    if not os.path.exists( output_dir ):
+        os.mkdir(  output_dir  )
+
+    plydir = output_dir + '/'
+
+    if not os.path.exists( plydir ):
+        os.mkdir( plydir )
+
+    numFiles = len(names)
+
+    for fid in range(numFiles):
+
+        print('write: ' + plydir +'/'+names[fid] +'.ply')
+
+        with open( plydir +'/'+names[fid]  +'.ply', 'w') as f:
+            pn = xyzs.shape[1]
+            f.write('ply\n')
+            f.write('format ascii 1.0\n')
+            f.write('element vertex %d\n' % (pn) )
+            f.write('property float x\n')
+            f.write('property float y\n')
+            f.write('property float z\n')
+            f.write('end_header\n')
+            for i in range(pn):
+                f.write('%f %f %f\n' % (xyzs[fid][i][0],  xyzs[fid][i][1],  xyzs[fid][i][2]))

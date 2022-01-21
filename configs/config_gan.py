@@ -13,10 +13,9 @@ cfg                                         = __C
 __C.DATASETS                                = edict()
 __C.DATASETS.SHAPENET                       = edict()
 __C.DATASETS.SHAPENET.TAXONOMY_FILE_PATH    = './datasets/rec.json'
-__C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/423ECD443ECD3229/new_dataset/shapenet_24_sketch_thin/%s/%s/render_thin_%d.png'
-__C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/shape_net_core_uniform_samples_2048/%s/%s.ply'
-__C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/423ECD443ECD3229/new_dataset/shapenet_24_sketch_thin/%s/%s/view.txt'
-__C.DATASETS.SHAPENET.HAND_DRAW_IMG_PATH    = '/media/caig/FECA2C89CA2C406F/sketch3D/dataset/hand_draw_img'
+__C.DATASETS.SHAPENET.RENDERING_PATH        = '/media/caig/423ECD443ECD3229/sketch_3d_dataset/img/shapenet_24_fix/%s/%s/render_%d.png'
+__C.DATASETS.SHAPENET.POINT_CLOUD_PATH      = '/media/caig/423ECD443ECD3229/sketch_3d_dataset/shape_net_core_uniform_samples_2048/%s/%s.ply'
+__C.DATASETS.SHAPENET.VIEW_PATH             = '/media/caig/423ECD443ECD3229/sketch_3d_dataset/img/shapenet_24_fix/%s/%s/view.txt'
 
 #
 # Dataset
@@ -139,38 +138,7 @@ __C.TEST.RESULT_PATH                        = '/media/caig/FECA2C89CA2C406F/sket
 # Evaluating options
 #
 __C.EVALUATE                                = edict()
-__C.EVALUATE.VERSION_ID                     = 49
-__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_part_rec/eval_v49/'
-__C.EVALUATE.WEIGHT_PATH                    = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v49/checkpoints/best-gan-ckpt.pth'
+__C.EVALUATE.VERSION_ID                     = 39
+__C.EVALUATE.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D_final/sketch_part_rec/eval_v39/'
+__C.EVALUATE.WEIGHT_PATH                    = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v39/checkpoints/best-gan-ckpt.pth'
 __C.EVALUATE.BATCH_SIZE                     = 1
-
-#
-# Evaluate on the true habd draw image
-#
-__C.EVALUATE_HAND_DRAW                                = edict()
-__C.EVALUATE_HAND_DRAW.INPUT_IMAGE_FOLDER             = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_4_10/v9/evaluate_hand_draw/hand_draw_input_img'
-__C.EVALUATE_HAND_DRAW.OUTPUT_FOLDER                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_4_10/v9/evaluate_hand_draw/hand_draw_output/'
-__C.EVALUATE_HAND_DRAW.RECONSTRUCTION_WEIGHTS         = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v9/checkpoints/best-reconstruction-ckpt.pth'
-# __C.EVALUATE_HAND_DRAW.VIEW_ESTIMATION_WEIGHTS        = '/media/itri/Files_2tb/chaoyu/pointcloud3d/output/new_output/checkpoints/2020-12-17T11:56:09.024186/best-view-ckpt.pth'
-
-#
-# Evaluating options
-#
-__C.EVALUATE_FIXED_VIEW                             = edict()
-__C.EVALUATE_FIXED_VIEW.TAXONOMY_ID                 = '03001627'
-__C.EVALUATE_FIXED_VIEW.RESULT_DIR                  = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/evaluate_fixed_view/'
-__C.EVALUATE_FIXED_VIEW.SAMPLE_FILE                 = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/evaluate_fixed_view/evaluate_sample.txt'
-__C.EVALUATE_FIXED_VIEW.VIEW_FILE                   = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/evaluate_fixed_view/fixed_view.txt'
-__C.EVALUATE_FIXED_VIEW.RECONSTRUCTION_WEIGHTS      = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch2pointcloud/output_v4/checkpoints/best-reconstruction-ckpt.pth'
-
-#
-# Evaluate multi-view
-# 
-__C.EVALUATE_MULTI_VIEW                             = edict()
-__C.EVALUATE_MULTI_VIEW.INPUT_IMAGE_PATH            = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_multi_view/input_imgs/render_0.png'
-__C.EVALUATE_MULTI_VIEW.UPDATE_IMAGE_FOLDER         = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_multi_view/update_imgs/'
-__C.EVALUATE_MULTI_VIEW.RECONSTRUCTION_WEIGHTS      = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v1/checkpoints/best-reconstruction-ckpt.pth'
-__C.EVALUATE_MULTI_VIEW.UPDATE_WEIGHTS              = '/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v15/checkpoints/best-update-ckpt.pth'
-__C.EVALUATE_MULTI_VIEW.OUT_DIR                     = '/media/caig/FECA2C89CA2C406F/sketch3D/sketch_projection/evaluate_multi_view/outputs'
-
-

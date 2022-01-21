@@ -1,9 +1,3 @@
-# 176    39f5eecbfb2470846666a748bda83f67 
-# 41753  a58f8f1bd61094b3ff2c92c2a4f65876
-# 2603   27c00ec2b6ec279958e80128fd34c2b1
-# 37247  484f0070df7d5375492d9da2668ec34c
-# 36881  4231883e92a3c1a21c62d11641ffbd35
-
 import json
 import numpy as np
 import os, sys
@@ -11,8 +5,8 @@ import torch
 import torch.nn as nn
 import torch.backends.cudnn
 import torch.utils.data
-
 from shutil import copyfile
+
 import cv2
 from datetime import datetime as dt
 from collections import OrderedDict
@@ -21,6 +15,7 @@ import utils.point_cloud_visualization_old
 import utils.data_loaders
 import utils.data_transforms
 import utils.network_utils
+from utils.point_cloud_utils import output_point_cloud_ply
 
 from models.graphx_rec import Graphx_Rec
 from models.networks_graphx_refine import GRAPHX_REFINE_MODEL
@@ -128,35 +123,46 @@ def evaluate_refine_net(cfg):
             sample_name = sample_names[0]
             taxonomy_name = taxonomy_names[0]
             
+            # Save sample dir
+            output_dir = cfg.EVALUATE.OUTPUT_FOLDER
+            sample_dir = os.path.join(output_dir, str(sample_idx))
+            if not os.path.exists(sample_dir):
+                os.makedirs(sample_dir)
+            sample_name_dir = os.path.join(sample_dir, sample_name)
+            if not os.path.exists(sample_name_dir):
+                os.makedirs(sample_name_dir)
+    
+            # Rendering image
+            sketch_path = os.path.join(sample_name_dir, 'sketch')
+            if not os.path.exists(sketch_path):
+                os.makedirs(sketch_path)
             src_sketch_img_path = os.path.join(cfg.DATASETS.SHAPENET.RENDERING_PATH % (taxonomy_name, sample_name, 1))
-            src_sketch_empty_img_path = os.path.join(cfg.DATASETS.SHAPENET.UPDATE_PATH % (taxonomy_name, sample_name, 1))
-            
-            inputs_path = os.path.join(img_dir, str(sample_idx), 'inputs')
-            if not os.path.exists(inputs_path):
-                os.makedirs(inputs_path)
-
-            # copy the config file
-            copyfile(src_sketch_img_path, os.path.join(inputs_path, str(sample_idx) + '_sketch.png'))
-            copyfile(src_sketch_empty_img_path, os.path.join(inputs_path, str(sample_idx) + '_empty_sketch.png'))
+            copyfile(src_sketch_img_path, os.path.join(sketch_path, 'sketch.png'))
 
             # Predict Pointcloud
             p_pc = pred_pc[0].detach().cpu().numpy()
             rendering_views = utils.point_cloud_visualization_old.get_point_cloud_image(p_pc, 
-                                                                                        os.path.join(img_dir, str(sample_idx), 'rec results'),
+                                                                                        os.path.join(sample_name_dir, 'rec results'),
                                                                                         sample_idx,
                                                                                         cfg.EVALUATE.VERSION_ID,
                                                                                         "",
                                                                                         view=[azi, ele])
-            
+
             # Groundtruth Pointcloud
             gt_pc = ground_truth_point_clouds[0].detach().cpu().numpy()
             rendering_views = utils.point_cloud_visualization_old.get_point_cloud_image(gt_pc,
-                                                                                        os.path.join(img_dir, str(sample_idx), 'gt'),
+                                                                                        os.path.join(sample_name_dir, 'gt'),
                                                                                         sample_idx,
                                                                                         cfg.EVALUATE.VERSION_ID,
                                                                                         "",
                                                                                         view=[azi, ele])
             
+            # save ply file
+            pc_dir = os.path.join(sample_name_dir, 'pc')
+            if not os.path.exists(pc_dir):
+                os.makedirs(pc_dir)
+            output_point_cloud_ply(np.array([p_pc]), ['pred_pc'], pc_dir)
+
             if sample_idx == 200:
                 break
 

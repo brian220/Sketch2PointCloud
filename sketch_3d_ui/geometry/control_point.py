@@ -1,0 +1,1 @@
+class CONTROL_POINT:

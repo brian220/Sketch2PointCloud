@@ -13,6 +13,7 @@ import torch.utils.data
 import cv2
 from datetime import datetime as dt
 from collections import OrderedDict
+from shutil import copyfile
 
 from models.networks_graphx_rec import GRAPHX_REC_MODEL
 
@@ -20,6 +21,7 @@ import utils.point_cloud_visualization_old
 import utils.data_loaders
 import utils.data_transforms
 import utils.network_utils
+from utils.point_cloud_utils import output_point_cloud_ply
 
 from pyntcloud import PyntCloud
 
@@ -54,8 +56,6 @@ def evaluate_rec_net(cfg):
     
     # Set up networks
     # The parameters here need to be set in cfg
-    # Set up networks
-    # The parameters here need to be set in cfg
     net = GRAPHX_REC_MODEL(
         cfg=cfg,
         optimizer=lambda x: torch.optim.Adam(x, lr=cfg.TRAIN.GRAPHX_LEARNING_RATE, weight_decay=cfg.TRAIN.GRAPHX_WEIGHT_DECAY),
@@ -73,26 +73,6 @@ def evaluate_rec_net(cfg):
     print('[INFO] Best reconstruction result at epoch %d ...' % rec_checkpoint['epoch_idx'])
     epoch_id = int(rec_checkpoint['epoch_idx'])
     
-    
-    '''
-    print('[INFO] %s Recovering from %s ...' % (dt.now(), cfg.EVALUATE.WEIGHT_PATH))
-    net_dict = net.state_dict()
-    pretrained_dict = torch.load(cfg.EVALUATE.WEIGHT_PATH)
-    pretrained_weight_dict = pretrained_dict['net']
-    new_weight_dict = OrderedDict()
-    for k, v in pretrained_weight_dict.items():
-        name = k
-        name = name.replace('module.', '')
-        name = 'module.reconstructor.module.' + name
-        # name = name[:]
-        if name in net_dict:
-            new_weight_dict[name] = v
-    
-    net_dict.update(new_weight_dict)
-    net.load_state_dict(net_dict)
-    epoch_id = int(pretrained_dict['epoch_idx'])
-    '''
-
     net.eval()
 
     # Testing loop
@@ -114,31 +94,52 @@ def evaluate_rec_net(cfg):
 
             loss, pred_pc = net.module.valid_step(rendering_images, init_point_clouds, ground_truth_point_clouds)
 
-            img_dir = cfg.EVALUATE.OUTPUT_FOLDER
-
             azi = model_azi[0].detach().cpu().numpy()*180./np.pi
             ele = model_ele[0].detach().cpu().numpy()*180./np.pi + 90.
             
+            taxonomy_name = taxonomy_names[0]
             sample_name = sample_names[0]
+            
+            # Save sample dir
+            output_dir = cfg.EVALUATE.OUTPUT_FOLDER
+            sample_dir = os.path.join(output_dir, str(sample_idx))
+            if not os.path.exists(sample_dir):
+                os.makedirs(sample_dir)
+            sample_name_dir = os.path.join(sample_dir, sample_name)
+            if not os.path.exists(sample_name_dir):
+                os.makedirs(sample_name_dir)
+    
+            # Rendering image
+            sketch_path = os.path.join(sample_name_dir, 'sketch')
+            if not os.path.exists(sketch_path):
+                os.makedirs(sketch_path)
+            src_sketch_img_path = os.path.join(cfg.DATASETS.SHAPENET.RENDERING_PATH % (taxonomy_name, sample_name, 1))
+            copyfile(src_sketch_img_path, os.path.join(sketch_path, 'sketch.png'))
 
             # Predict Pointcloud
             p_pc = pred_pc[0].detach().cpu().numpy()
             rendering_views = utils.point_cloud_visualization_old.get_point_cloud_image(p_pc, 
-                                                                                        os.path.join(img_dir, str(sample_idx), 'rec results'),
+                                                                                        os.path.join(sample_name_dir, 'rec results'),
                                                                                         sample_idx,
                                                                                         cfg.EVALUATE.VERSION_ID,
                                                                                         "",
                                                                                         view=[azi, ele])
-            
+
             # Groundtruth Pointcloud
             gt_pc = ground_truth_point_clouds[0].detach().cpu().numpy()
             rendering_views = utils.point_cloud_visualization_old.get_point_cloud_image(gt_pc,
-                                                                                        os.path.join(img_dir, str(sample_idx), 'gt'),
+                                                                                        os.path.join(sample_name_dir, 'gt'),
                                                                                         sample_idx,
                                                                                         cfg.EVALUATE.VERSION_ID,
                                                                                         "",
                                                                                         view=[azi, ele])
             
+            # save ply file
+            pc_dir = os.path.join(sample_name_dir, 'pc')
+            if not os.path.exists(pc_dir):
+                os.makedirs(pc_dir)
+            output_point_cloud_ply(np.array([p_pc]), ['pred_pc'], pc_dir)
+
             if sample_idx == 200:
                 break
 

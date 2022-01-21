@@ -1,0 +1,8 @@
+Work plane : 6
+3D line : 6
+Plane selection : 4
+Plane deletion : 0
+Plane creation : 7
+Plane transformation : 4
+Point cloud selection : 0
+Point cloud deformation : 0
