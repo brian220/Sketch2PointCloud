@@ -84,9 +84,10 @@ python sketch_3d_app.py
 Links:
 
 ## Pretrained Weight
-Links
+Links:
 
 ## Reference
 https://github.com/hzxie/Pix2Vox.git <br />
+https://github.com/justanhduc/graphx-conv <br />
 https://github.com/microsoft/SpareNet <br />
 https://github.com/mathLab/PyGeM
