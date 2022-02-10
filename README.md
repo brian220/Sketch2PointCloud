@@ -2,13 +2,12 @@
 Code for my master thesis: A Sketch based 3D Point Cloud Modeling System based on Deep Generation Network and Detail Editing
 
 ## Sketch-based 3D Point Cloud Modeling
-### Functions
-System overview:
+### System overview:
 ![image](https://user-images.githubusercontent.com/27956674/153366179-b50d9409-d666-427e-8d0b-e8827d8ca950.png)
 
-Main functions:
+### Main functions:
 1. Generate 3D point clouds from sketches.
-2. 2. Add erasing hints to improve point clouds' details.
+2. Add erasing hints to improve point clouds' details.
 3. Add thin structures.
 4. Apply deformation.
 
