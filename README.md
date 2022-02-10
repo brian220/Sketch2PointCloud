@@ -1,12 +1,21 @@
 ## Introduction
 Code for my master thesis: A Sketch based 3D Point Cloud Modeling System based on Deep Generation Network and Detail Editing
 
-    
 ## Sketch-based 3D Point Cloud Modeling
-
 ### Functions
+System overview:
+![image](https://user-images.githubusercontent.com/27956674/153366179-b50d9409-d666-427e-8d0b-e8827d8ca950.png)
+
+Main functions:
+1. Create 3D point clouds from sketches
+2. Add erasing hints to improve point clouds' details
+3. Add thin structures
+4. Apply deformation
+
+After editing, user can save the result point clouds.
 
 ### Demo Video
+Demo video on youtube.
 
 ## Code
 ### Set up environment
@@ -17,7 +26,7 @@ pip install -r requirements.txt
 
 We recommand using python virtual env to set up the environment.
 
-### Training
+### For model training and testing
 To train the reconstruction model:
 ```
 python runner.py --train_gan
@@ -28,9 +37,8 @@ To train the erasing model:
 python runner.py --train_refine
 ```
 
-*Please check the config files in `configs` folder to make sure the paths are correct
+*Please check the config files in `configs/` folder to make sure the paths are correct
 
-### Testing
 To test the models (Compute CD, EMD):
 
 For reconstruction model:
@@ -43,7 +51,6 @@ For refinement model:
 python runner.py --test_refine
 ```
 
-### Evaluating
 To evaluate the models (Visualize the point clouds created from models):
 
 For reconstrution model:
