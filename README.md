@@ -41,7 +41,7 @@ python runner.py --train_refine
 
 <br />
 
-To test the models (Compute CD, EMD):
+To test the models (Compute CD, EMD):<br />
 For reconstruction model:
 ```
 python runner.py --test_gan
@@ -53,7 +53,7 @@ python runner.py --test_refine
 ```
 <br />
 
-To evaluate the models (Visualize the point clouds created from models):
+To evaluate the models (Visualize the point clouds created from models):<br />
 For reconstrution model:
 ```
 python runner.py --evaluate_gan
