@@ -1,8 +1,11 @@
-# sketch2pointcloud
-A sketch to 3d point cloud framework
+# Introduction
+Code for my master thesis: A Sketch based 3D Point Cloud Modeling System based on Deep Generation Network and Detail Editing
 
-reference:
+# Training
 
-https://github.com/seowok/TreeGAN.git
+# Testing
 
+# Dataset
+
+# Reference
 https://github.com/hzxie/Pix2Vox.git
