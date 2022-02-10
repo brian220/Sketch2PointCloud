@@ -14,7 +14,7 @@ Code for my master thesis: A Sketch based 3D Point Cloud Modeling System based o
 After editing, user can save the result point clouds.
 
 ### Demo Video
-Demo video on youtube.
+Demo video on youtube:
 
 ## Code
 ### Set up environment
@@ -34,12 +34,12 @@ Before training and testing, please check the config files in `configs/` to make
 
 **Training**
 
-For the reconstruction module:
+For reconstruction module:
 ```
 python runner.py --train_gan
 ```
 
-To train the erasing module:
+For erasing module:
 ```
 python runner.py --train_refine
 ```
