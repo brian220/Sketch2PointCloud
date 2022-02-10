@@ -7,10 +7,10 @@ System overview:
 ![image](https://user-images.githubusercontent.com/27956674/153366179-b50d9409-d666-427e-8d0b-e8827d8ca950.png)
 
 Main functions:
-1. Create 3D point clouds from sketches
-2. Add erasing hints to improve point clouds' details
-3. Add thin structures
-4. Apply deformation
+1. Generate 3D point clouds from sketches.
+2. 2. Add erasing hints to improve point clouds' details.
+3. Add thin structures.
+4. Apply deformation.
 
 After editing, user can save the result point clouds.
 
@@ -39,8 +39,9 @@ python runner.py --train_refine
 
 *Please check the config files in `configs/` folder to make sure the paths are correct
 
-To test the models (Compute CD, EMD):
+<br />
 
+To test the models (Compute CD, EMD):
 For reconstruction model:
 ```
 python runner.py --test_gan
@@ -50,9 +51,9 @@ For refinement model:
 ```
 python runner.py --test_refine
 ```
+<br />
 
 To evaluate the models (Visualize the point clouds created from models):
-
 For reconstrution model:
 ```
 python runner.py --evaluate_gan
@@ -76,5 +77,5 @@ Links:
 Links
 
 ## Reference
-https://github.com/hzxie/Pix2Vox.git
+https://github.com/hzxie/Pix2Vox.git <br />
 https://github.com/microsoft/SpareNet
