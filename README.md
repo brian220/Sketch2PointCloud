@@ -28,7 +28,7 @@ To train the erasing model:
 python runner.py --train_refine
 ```
 
-*Please check the config files in config folder to make sure the paths are correct
+*Please check the config files in `configs` folder to make sure the paths are correct
 
 ### Testing
 To test the models (Compute CD, EMD):
