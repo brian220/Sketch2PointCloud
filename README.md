@@ -23,14 +23,17 @@ Please install the packages in requirements.txt
 pip install -r requirements.txt
 ```
 
-We recommand using python virtual env to set up the environment.
+We recommand using python [virtual env](https://docs.python.org/zh-tw/3/tutorial/venv.html) to set up the environment.
+
+This code is tested under CUDA 11.0 on Ubuntu 20.04 and a RTX2080 super GPU.
 
 ### For model training and testing
-*Before training and testing, please check the config files in `configs/` folder to make sure the paths are correct* 
+Before training and testing, please check the config files in `configs/` to make sure the paths are correct
 
 <br />
 
-*Training*
+**Training**
+
 For the reconstruction module:
 ```
 python runner.py --train_gan
@@ -43,7 +46,8 @@ python runner.py --train_refine
 
 <br />
 
-*Testing*
+**Testing**
+
 Compute CD, EMD:<br />
 For reconstruction module:
 ```
@@ -54,9 +58,11 @@ For erasing module:
 ```
 python runner.py --test_refine
 ```
+
 <br />
 
-*Evaluating*
+**Evaluating**
+
 Visualize the point clouds created from models:<br />
 For reconstrution module:
 ```
@@ -82,4 +88,5 @@ Links
 
 ## Reference
 https://github.com/hzxie/Pix2Vox.git <br />
-https://github.com/microsoft/SpareNet
+https://github.com/microsoft/SpareNet <br />
+https://github.com/mathLab/PyGeM
