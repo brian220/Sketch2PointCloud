@@ -64,7 +64,7 @@ python runner.py --test_refine
 **Evaluating**
 
 Visualize the point clouds created from models:<br />
-For reconstrution module:
+For reconstruction module:
 ```
 python runner.py --evaluate_gan
 ```
@@ -80,10 +80,11 @@ Please run:
 python sketch_3d_app.py
 ```
 
-## Dataset
+## Downloads
+### Dataset
 Links:
 
-## Pretrained Weight
+### Pretrained Weight
 Links:
 
 ## Reference
