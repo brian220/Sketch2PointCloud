@@ -14,7 +14,7 @@ Code for my master thesis: A Sketch based 3D Point Cloud Modeling System based o
 After editing, user can save the result point clouds.
 
 ### Demo Video
-Demo video on youtube:
+Demo video on youtube: https://www.youtube.com/watch?v=Vch4nURRrAE&t=50s
 
 ## Code
 ### Set up environment
