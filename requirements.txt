@@ -1,13 +1,16 @@
 argparse
-easydict
-matplotlib==3.0.3
-numpy
-opencv-python
-scipy
-torch==1.2.0
-torchvision==0.4.0
-tensorboardX==1.2.0
-pyntcloud
-# Please check for your cuda version and select the right version of cupy
-# cupy-cuda100 is only work for cuda 10.0
 cupy-cuda110
+easydict==1.9
+matplotlib==3.0.3
+numpy==1.19.5
+opencv-python==4.1.2.30
+open3d==0.13.0
+pyntcloud==0.1.5
+pyOpenGL==3.1.5
+pygame==2.1.0
+PyQt5==5.10.1
+scipy==1.2.3
+Shapely==1.7.1
+tensorboardX==1.2.0
+triangle
+trimesh==3.9.29
