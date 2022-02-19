@@ -97,10 +97,16 @@ python sketch_3d_app.py
 
 ## Downloads
 ### Dataset
-Links:
+We render the 3D models in [ShapeNet](https://shapenet.org/) to different views and convert the rendering images to
+sketch images by [Photo-Sketching] (https://github.com/mtli/PhotoSketch)
+
+Links for point clouds: 
+Links for sketch images: https://drive.google.com/file/d/1kibjgEdlkqeUIEumexFKe2SWif0LX2xN/view?usp=sharing
+Links for sketch images and erasing annotations: 
 
 ### Pretrained Weight
-Links:
+Links for reconstruction module:
+Links for erasing module:
 
 ## Reference
 https://github.com/hzxie/Pix2Vox.git <br />
