@@ -18,12 +18,27 @@ Demo video on youtube: https://www.youtube.com/watch?v=Vch4nURRrAE&t=50s
 
 ## Code
 ### Set up environment
-Please install the packages in requirements.txt
+Create [Python Virtual Env](https://docs.python.org/zh-tw/3/tutorial/venv.html)
+```
+virtualenv -p virtualenv -p /usr/bin/python3.6 sketch2pc_venv
+source sketch2pc_venv/bin/activate
+```
+
+Install Pytorch
+```
+pip install torch==1.7.1+cu110 torchvision==0.8.2+cu110 torchaudio==0.7.2 -f https://download.pytorch.org/whl/torch_stable.html
+```
+
+Compile the EMD loss function, we use the code from the [SpareNet](https://github.com/microsoft/SpareNet)
+```
+cd cuda/emd
+python setup.py install
+```
+
+For other packages, install the packages in requirements.txt
 ```
 pip install -r requirements.txt
 ```
-
-We recommand using python [virtual env](https://docs.python.org/zh-tw/3/tutorial/venv.html) to set up the environment.
 
 This code is tested under CUDA 11.0 on Ubuntu 20.04 and a RTX2080 super GPU.
 
