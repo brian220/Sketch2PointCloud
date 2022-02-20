@@ -1,5 +1,10 @@
 ## Introduction
-Code for my master thesis: A Sketch based 3D Point Cloud Modeling System based on Deep Generation Network and Detail Editing
+Code for my master thesis: **A Sketch based 3D Point Cloud Modeling System based on Deep Generation Network and Detail Editing**
+
+The interactive system can generate the 3D point clouds from sketches and apply further point cloud editings.
+
+### Demo Video
+Demo video on youtube: https://www.youtube.com/watch?v=Vch4nURRrAE&t=50s
 
 ## Sketch-based 3D Point Cloud Modeling
 ### System overview:
@@ -12,9 +17,6 @@ Code for my master thesis: A Sketch based 3D Point Cloud Modeling System based o
 4. Apply deformation.
 
 After editing, user can save the result point clouds.
-
-### Demo Video
-Demo video on youtube: https://www.youtube.com/watch?v=Vch4nURRrAE&t=50s
 
 ## Code
 ### Set up environment
@@ -99,19 +101,19 @@ python sketch_3d_app.py
 ### Dataset
 
 We render the 3D models in [ShapeNet](https://shapenet.org/) to different views and convert the rendering images to
-sketch images by [Photo-Sketching](https://github.com/mtli/PhotoSketch)
+sketch images by [Photo-Sketching](https://github.com/mtli/PhotoSketch), please download data from following links:
 
-Links for point clouds: 
+[Point clouds](https://drive.google.com/file/d/1YIKbuMugOGbTT5bbtpfuPC0EHv8P7kZh/view?usp=sharing) 
 
-Links for sketch images: https://drive.google.com/file/d/1kibjgEdlkqeUIEumexFKe2SWif0LX2xN/view?usp=sharing
+[Sketch images](https://drive.google.com/file/d/1kibjgEdlkqeUIEumexFKe2SWif0LX2xN/view?usp=sharing)
 
-Links for sketch images and erasing annotations: 
+[Sketch images and erasing annotations](https://drive.google.com/file/d/1rmhTHiXXDHULu4DwEQ3j1iLR7tnvXXQC/view?usp=sharing)
 
 ### Pretrained Weight
 
-Links for reconstruction module:
+Please download pretrained weight from following links: (Reconstruction module: best-gan-ckpt.pth , Erasing module: best-refine-ckpt.pth)
 
-Links for erasing module:
+[Pretrained weight](https://drive.google.com/file/d/14OH7S2oMbJT4JVkTpdLougQG-hC1xkYi/view?usp=sharing)
 
 ## Reference
 https://github.com/hzxie/Pix2Vox.git <br />
