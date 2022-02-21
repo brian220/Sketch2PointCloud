@@ -294,4 +294,46 @@ def ray_axis_hit_detection(axis_start, axis_end, axis, ray_origin, ray_dir, thic
             hit = True
 
     return hit, hit_point_on_axis, ray_t
+
+# 
+def fix_rec(rec):
+    print("fix_rec")
+    rec = np.array(rec)
+
+    fixed_rec = []
+    for corner_id, corner in enumerate(rec):
+        last_id = corner_id - 1
+        next_id = corner_id + 1
+
+        if corner_id == 0:
+            last_id = 3
+
+        elif corner_id == 3:
+            next_id = 0
+
+        last_corner = rec[last_id]
+        next_corner = rec[next_id]
+
+        last_vector = last_corner - corner
+        next_vector = next_corner - corner
+        
+        last_length = vector_length(last_vector)
+        next_length = vector_length(next_vector)
+
+        cos_value = np.dot(normalized_vector(last_vector), normalized_vector(next_vector))
+
+        if cos_value < 0.:
+            print('cos')
+            if next_length > last_length:
+                projection_length = abs(last_length*cos_value)
+                point = corner - normalized_vector(next_vector)*projection_length
+                fixed_rec.append(point)
+            else:
+                projection_length = abs(next_length*cos_value)
+                point = corner - normalized_vector(last_vector)*projection_length
+                fixed_rec.append(point)
+        else:
+            fixed_rec.append(corner)
+    
+    return fixed_rec 
     

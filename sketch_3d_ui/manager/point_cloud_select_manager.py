@@ -1,7 +1,16 @@
+'''
+The manager can solve the selection operations:
+When user click on:
+
+    1. The base_point_cloud
+    
+    2. Point clouds in a work plane
+    
+The point clouds will be selected.
+'''
+
 import numpy as np
-
 from sketch_3d_ui.manager.geometry_manager import GeometryManager as GM
-
 from sketch_3d_ui.counter import COUNTER
 
 class PointCloudSelectManager(GM):

@@ -1,3 +1,10 @@
+'''
+1. Setting the application layouts
+
+2. Run the application
+
+'''
+
 import sys
 import math
 import os
@@ -105,6 +112,7 @@ class Window(QMainWindow):
         self.refineAction = QAction("&Refine", self)
 
         self.symmetricOptimizeAction = QAction("&Symmetric optimize", self)
+        self.predictSkeletonAction = QAction("&Predict Skeleton", self)
         
         # For setting menu
         self.setDrawLineAction = QAction("&Draw Line Settings", self)
@@ -130,6 +138,7 @@ class Window(QMainWindow):
         self.settingMenu.addAction(self.setFFDAction)
 
         self.optimizeMenu.addAction(self.symmetricOptimizeAction)
+        self.optimizeMenu.addAction(self.predictSkeletonAction)
 
         menuBar.addMenu(self.fileMenu)
         menuBar.addMenu(self.editMenu)
@@ -159,6 +168,7 @@ class Window(QMainWindow):
         self.setWorkPlaneAction.triggered.connect(lambda: self.setWorkPlane())
 
         self.symmetricOptimizeAction.triggered.connect(lambda: self.symmetricOptimize())
+        self.predictSkeletonAction.triggered.connect(lambda: self.predictSkeleton())
     
     def saveResult(self):
         myDir = QFileDialog.getExistingDirectory(self,
@@ -216,6 +226,9 @@ class Window(QMainWindow):
 
     def symmetricOptimize(self):
         self.edit_widget.symmetric_optimize()
+    
+    def predictSkeleton(self):
+        self.edit_widget.predict_skeleton()
 
     def screenshot(self, filename):
         screen = QApplication.primaryScreen()

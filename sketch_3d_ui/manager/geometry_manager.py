@@ -1,21 +1,31 @@
-import numpy as np
+'''
+This basic operations for managers:
 
+    1. Geometric data base for point cloud, which can share by different managers
+
+    2. State machine for managers 
+
+    3. View port settings 
+
+    4. Ray and object detection: ray plane detection, ray point detection ...
+
+    5. Bill boards
+'''
+
+import numpy as np
 import sketch_3d_ui.geometry.geometry_utils as geometry_utils
 from sketch_3d_ui.view.viewport import ViewPort
 from sketch_3d_ui.geometry.canvas import Canvas
 from sketch_3d_ui.geometry.point_cloud import PointCloud
 
 class GeometryManager:
-    rendering_mask = []
 
     # point cloud
-    base_point_cloud = None
-
-    reference_point_cloud = None
-    
-    select_point_cloud = False
+    base_point_cloud = None                      # Point cloud created from reconstruction module or eraing module
+    reference_point_cloud = None                 # Point cloud selected by user from the reference list
+    select_point_cloud = False                   # 
     current_point_cloud = None
-    current_point_cloud_select_mode = None
+    current_point_cloud_select_mode = None       # 'comp': Component selection ''
     current_point_cloud_data = {}
     current_point_cloud_comp_data = {}
     
@@ -127,7 +137,6 @@ class GeometryManager:
     ########################################################################
     #    Ray point cloud hit detection                                     #
     ########################################################################
-    # ray v.s point cloud
     def mouse_ray_and_point_cloud_hit_detection(self, mouse_x, mouse_y, point_cloud):
         hit = False
 
@@ -147,7 +156,6 @@ class GeometryManager:
         
         return hit, hit_point_id
 
-    # ray v.s work planes point cloud
     def mouse_ray_and_work_plane_point_cloud_hit_detection(self, mouse_x, mouse_y, work_planes):
         hit = False
         work_plane_id = None
@@ -173,11 +181,10 @@ class GeometryManager:
                     return hit, work_plane_id, line_id
 
         return hit, work_plane_id, line_id
-        
+    
     ########################################################################
     #    Ray plane hit detection                                           #
     ########################################################################
-    # ray v.s planes
     def mouse_ray_and_planes_hit_detection(self, mouse_x, mouse_y, planes, boundary=True):
         hit = False
         hit_point = None

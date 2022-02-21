@@ -1,3 +1,17 @@
+'''
+Main openGL window:
+    1. Settings and reference models
+
+    2. Manager initialization
+
+    3. Sketch to 3D
+
+    4. OPENGL setting
+    
+    5. Draw scene
+
+'''
+
 import numpy as np
 from PIL import Image
 import math
@@ -20,6 +34,8 @@ from pyntcloud import PyntCloud
 from configs.config_ui import cfg
 from core.inference import inference_net
 from core.refine import refine_net
+from core.symmetric_optimize import symmetric_optimize_net
+from core.predict_skeleton import predict_skeleton_net
 
 # For UI
 import sketch_3d_ui.geometry.geometry_utils as geometry_utils
@@ -34,8 +50,8 @@ from sketch_3d_ui.manager.work_plane_transform_manager import WorkPlaneTransform
 from sketch_3d_ui.manager.point_cloud_select_manager import PointCloudSelectManager
 from sketch_3d_ui.manager.point_cloud_comp_select_manager import PointCloudCompSelectManager
 from sketch_3d_ui.manager.point_cloud_deform_manager import PointCloudDeformManager
-from sketch_3d_ui.view.camera import Camera_Z_UP
 
+from sketch_3d_ui.view.camera import Camera_Z_UP
 from sketch_3d_ui.counter import COUNTER, reset_counter
 
 from utils.point_cloud_utils import output_point_cloud_ply
@@ -96,9 +112,11 @@ class EditWidget(BASEOPENGL):
         super(EditWidget, self).__init__(parent)
         
         # show counter
+        """
         self.show_counter_widget = CheckBoxWidget(self)
         self.show_counter_widget.setMinimumSize(300, 100)
         self.show_counter_widget.setGeometry(0, 0, 150, 150)
+        """
 
         self.width = 896
         self.height = 896
@@ -112,11 +130,14 @@ class EditWidget(BASEOPENGL):
         self.azi = 0.
         self.ele = 0.
         
+        # pc_path = "/media/caig/FECA2C89CA2C406F/sketch3D_final/sketch_part_rec/sketch_3d_ui/cache/pcs/optimize_pc.ply"
+        
+        # pc_path = "/media/caig/FECA2C89CA2C406F/Point2Skeleton/data/pointclouds/03001627/18845d9336d8be637b11ae648ea92233.ply"
         """
-        pc_path = "/media/caig/FECA2C89CA2C406F/sketch3D/dataset/shape_net_core_uniform_samples_2048/03001627/27c00ec2b6ec279958e80128fd34c2b1.ply"
+        pc_path = "/media/caig/423ECD443ECD3229/sketch_3d_dataset/shape_net_core_uniform_samples_2048/03001627/1a74a83fa6d24b3cacd67ce2c72c02e.ply"
         pc = PyntCloud.from_file(pc_path)
         pc_points = np.array(pc.points).astype(np.float32)
-        GM.base_point_cloud = PointCloud(pc_points)
+        GM.base_point_cloud = PointCloud(pc_points[:,:3])
         GM.base_point_cloud.set_color_according_camera_pos(camera_pos=[1.5, 1.5, 0.0])
         """
 
@@ -124,6 +145,11 @@ class EditWidget(BASEOPENGL):
                                   phi= (90. - self.ele)*math.pi/180., \
                                   distance=2.0)
         
+        """
+        self.camera = Camera_Z_UP(theta=self.azi*math.pi/180., \
+                                  phi= (90. - self.ele)*math.pi/180., \
+                                  distance=5.0)
+        """
         self.mouse_state = None
     
     ########################################################################
@@ -148,10 +174,12 @@ class EditWidget(BASEOPENGL):
         # save edited work plane point clouds
         self.work_plane_sketch_manager.save_work_plane_generate_point_clouds(save_pc_path)
         
+        """
         # save counter info for the user study
         self.save_counter(save_path)
         reset_counter()
-
+        """
+        
         # reset geometry manager
         self.reset_manager()
 
@@ -165,8 +193,12 @@ class EditWidget(BASEOPENGL):
                 pc = PyntCloud.from_file(os.path.join(pc_path, dir))
                 pc_points = np.array(pc.points).astype(np.float32)
                 pc_list.append(pc_points)
-       
-        merge_pc = np.concatenate(pc_list)
+        
+        if len(pc_list) > 1:
+            merge_pc = np.concatenate(pc_list)
+        else:
+            merge_pc = np.array(pc_list[0])
+
         GM.base_point_cloud = PointCloud(merge_pc)
         GM.base_point_cloud.set_color_according_camera_pos(camera_pos=[1.5, 1.5, 0.0])
         
@@ -236,8 +268,30 @@ class EditWidget(BASEOPENGL):
         self.work_plane_sketch_manager.current_sketch_width = width
         self.changeCurser()
 
+    def symmetric_optimize(self):
+        self.makeCurrent() 
+        if len(GM.work_planes) == 0:
+            ori_pcs = GM.base_point_cloud.positions
+        else:
+            ori_pcs_list = []
+            ori_pcs_list.append(GM.base_point_cloud.positions)
+            for work_plane in GM.work_planes:
+                for point_cloud in work_plane.generate_point_clouds:
+                    pc = point_cloud.positions
+                    ori_pcs_list.append(pc)
+            ori_pcs = np.concatenate(ori_pcs_list)
+        
+        optimize_pc = symmetric_optimize_net(cfg.INFERENCE.OPTIMIZE_PATH, ori_pcs, [0., 0., 0.], [0., 1., 0.])
+        
+        output_point_cloud_ply(np.array([optimize_pc]), ['optimize_pc'], cfg.INFERENCE.CACHE_POINT_CLOUD_PATH)
+    
+    def predict_skeleton(self):
+        self.makeCurrent()
+        skeleton = predict_skeleton_net(cfg, GM.base_point_cloud.positions)
+        self.update()
+
     ########################################################################
-    #    Mode                                                              #
+    #    Manager initialization                                            #
     ########################################################################
     def init_mode(self):
         if self.mode == 'inputSketch':
@@ -636,15 +690,6 @@ class EditWidget(BASEOPENGL):
     def refine(self):
         self.makeCurrent()
         azi, ele = self.camera.get_azi_ele()
-        
-        """
-        print('view')
-        print('azi:')
-        print(azi)
-        print('ele:')
-        print(ele)
-        """
-
         pc_points = refine_net(cfg, GM.base_point_cloud.positions, azi, ele)
         GM.base_point_cloud = PointCloud(pc_points)
         GM.base_point_cloud.set_color_according_camera_pos(camera_pos=[1.5, 1.5, 0.0])
@@ -652,7 +697,7 @@ class EditWidget(BASEOPENGL):
     
 
     ########################################################################
-    #    SET OPENGL                                                        #
+    #    OPENGL setting                                                    #
     ########################################################################
     def initializeGL(self):
         print("initializeGL")
@@ -691,7 +736,7 @@ class EditWidget(BASEOPENGL):
         self.set_projection()
         self.set_model_view(camera_pos)
         self.draw_main_scene()
-        self.show_counter_widget.update_label()
+        # self.show_counter_widget.update_label()
 
     # scene  
     def draw_main_scene(self):
@@ -701,6 +746,13 @@ class EditWidget(BASEOPENGL):
         
         self.draw_base_point_cloud()
         self.draw_generate_point_clouds()
+
+        # skeleton_path = '/media/caig/FECA2C89CA2C406F/point2skel_new/Point2Skeleton/results/106_mesh_graph.obj'
+        # skeleton_path = '/media/caig/FECA2C89CA2C406F/point2skel_new/Point2Skeleton/results/105_skel_edge.obj'
+        # skeleton_path = '/media/caig/423ECD443ECD3229/results_b4/107_skel_edge.obj'
+        
+        # skeleton_path = '/media/caig/FECA2C89CA2C406F/sketch3D_final/sketch_part_rec/Point2Skeleton/result/skel_edge.obj'
+        # self.draw_skeleton(skeleton_path)
         
         # draw lines on work face
         # self.draw_lines_on_work_planes()
@@ -906,7 +958,7 @@ class EditWidget(BASEOPENGL):
     def draw_load_image(self):
         # TO DO
         pass
-    
+ 
     def changeCurser(self):
         if self.mode == 'workPlaneSketch':
             current_width = self.work_plane_sketch_manager.current_sketch_width

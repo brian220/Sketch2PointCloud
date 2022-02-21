@@ -1,3 +1,9 @@
+'''
+The manager can solve the work plane selection,
+When user clicks on the work plane, user can
+select or delete work plane.
+'''
+
 import numpy as np
 import trimesh
 import math

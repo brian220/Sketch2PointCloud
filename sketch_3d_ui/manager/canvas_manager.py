@@ -1,3 +1,11 @@
+'''
+The manager can solve the 2D drawing operations, includes:
+1. When mode = 'inputSketch', draw the input sketches on canvas
+2. When mode = 'inputErase', erase the input sketches or erasing hints
+3. When mode = 'inputDetail', draw the input details on canvas
+'''
+
+
 import numpy as np
 from sketch_3d_ui.manager.geometry_manager import GeometryManager as GM
 import sketch_3d_ui.geometry.geometry_utils as geometry_utils
@@ -26,7 +34,6 @@ class CanvasManager(GM):
         self.tmp_detail_canvas.fill(Qt.transparent)
         
         self.brushSize = 5
-        # self.brushSize = 20
         self._clear_size = 20
        
     def init_manager(self, mode):

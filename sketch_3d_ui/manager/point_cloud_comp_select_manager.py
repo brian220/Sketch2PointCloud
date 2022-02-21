@@ -1,13 +1,16 @@
+'''
+The manager can solve the component selection operations
+When user draw a contour on the screen, the point clouds
+inside the contour will be selected.
+'''
+
 import numpy as np
 import cv2
 
 import sketch_3d_ui.geometry.geometry_utils as geometry_utils
-
 from PyQt5.QtCore import QSize, Qt, QRect, QPoint
 from PyQt5.QtGui import QImage, QPainter, QColor, QPen
-
 from sketch_3d_ui.manager.geometry_manager import GeometryManager as GM
-
 from sketch_3d_ui.counter import COUNTER
 
 class PointCloudCompSelectManager(GM):

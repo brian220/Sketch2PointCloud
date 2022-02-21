@@ -1,3 +1,16 @@
+'''
+Basic operation for a OpenGL window, includes:
+    1. Mode setting
+    
+    2. Basic mouse events
+    
+    3. Screen setting
+
+    4. Camera setting
+
+    5. Draw scene
+'''
+
 import numpy as np
 from PIL import Image
 import math
@@ -30,7 +43,9 @@ from sketch_3d_ui.manager.point_cloud_deform_manager import PointCloudDeformMana
 
 from sketch_3d_ui.view.camera import Camera_Z_UP
 
-from sketch_3d_ui.utils.objloader import OBJ
+from sketch_3d_ui.utils.obj_loader import load_skeleton_from_obj_file
+
+# from sketch_3d_ui.utils.objloader import OBJ
 
 class BaseOpenGLWidget(QOpenGLWidget):
     # sketch
@@ -60,10 +75,10 @@ class BaseOpenGLWidget(QOpenGLWidget):
         # eye
         self.azi = 0.
         self.ele = 0.
+        
         self.camera = Camera_Z_UP(theta=self.azi*math.pi/180., \
                                   phi= (90. - self.ele)*math.pi/180., \
                                   distance=2.0)
-        
         
         
         self.mouse_state = None
@@ -216,44 +231,17 @@ class BaseOpenGLWidget(QOpenGLWidget):
         glutSolidSphere(size, 8, 6)
         
         glPopMatrix()
-    
-    def draw_skeleton_cube(self, pos, color, size):
-        cube_size = 0.03
-        verticies = (
-            (cube_size, -cube_size, -cube_size),
-            (cube_size, cube_size, -cube_size),
-            (-cube_size, cube_size, -cube_size),
-            (-cube_size, -cube_size, -cube_size),
-            (cube_size, -cube_size, cube_size),
-            (cube_size, cube_size, cube_size),
-            (-cube_size, -cube_size, cube_size),
-            (-cube_size , cube_size, cube_size)
-        )
 
-        edges = (
-            (0,1),
-            (0,3),
-            (0,4),
-            (2,1),
-            (2,3),
-            (2,7),
-            (6,3),
-            (6,4),
-            (6,7),
-            (5,1),
-            (5,4),
-            (5,7)
-        )
+    def draw_skeleton(self, filename):
+        vertices, edges = load_skeleton_from_obj_file(filename)
 
         glPushMatrix()
-
-        glTranslated(pos[0], pos[1], pos[2])
        
         glBegin(GL_LINES)
         for edge in edges:
             for vertex in edge:
-                glColor3fv(color)
-                glVertex3fv(verticies[vertex])
+                glColor3fv([1., 0., 0.])
+                glVertex3fv(vertices[vertex])
         glEnd()
 
         glPopMatrix()
@@ -421,11 +409,3 @@ class BaseOpenGLWidget(QOpenGLWidget):
         glPopMatrix()
 
         glEnable(GL_DEPTH_TEST)
-
-    def draw_obj(self, filename):
-        obj = OBJ(filename)
-
-        glPushMatrix()
-        obj.render()
-        glPopMatrix()
-

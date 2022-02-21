@@ -100,3 +100,6 @@ __C.INFERENCE.USER_EVALUATION_PATH           = "/media/caig/FECA2C89CA2C406F/ske
 
 __C.INFERENCE.GENERATOR_WEIGHTS              = "/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v39/checkpoints/best-gan-ckpt.pth"
 __C.INFERENCE.REFINER_WEIGHTS                = "/media/caig/FECA2C89CA2C406F/sketch3D/results/outputs/output_v44/checkpoints/best-refine-ckpt.pth"
+
+# Opitimize
+__C.INFERENCE.OPTIMIZE_PATH                  = "/media/caig/FECA2C89CA2C406F/sketch3D_final/sketch_part_rec/sketch_3d_ui/optimize_path"

@@ -1,3 +1,11 @@
+'''
+The manager can solve the work plane sketching,
+    1. Users can create work planes with input sketch
+
+    2. When users draw on a selected work plane, the manager
+       creates a thin structure according to input sketch. 
+'''
+
 import numpy as np
 import trimesh
 import math
@@ -89,9 +97,6 @@ class WorkPlaneSketchManager(GM):
             self.draw_on_canvas()
 
         elif event == 'release':
-            print('current_2d_line')
-            print(self.current_2d_line)
-
             if len(self.current_2d_line) > 1 and GM.current_id != None:
                 self.add_current_3d_line(boundary=False)
                 self.create_work_plane()
@@ -136,9 +141,6 @@ class WorkPlaneSketchManager(GM):
             self.draw_on_canvas()
 
         elif event == 'release':
-            print('current_2d_line')
-            print(self.current_2d_line)
-            
             if len(self.current_2d_line) > 1 and GM.current_id != None:
                 self.add_current_3d_line(boundary=True)
                 self.finish_sketch_current_plane()
@@ -279,7 +281,7 @@ class WorkPlaneSketchManager(GM):
     def create_candidate_work_plane(self, candidate_center, near_point_cloud):
         w, v = PCA(near_point_cloud)
         
-        # if not span a flat plane
+        # if not span a flat plane, 
         max_id = 0
         if not (w[0] >= w[2]*2 and w[1] >= w[2]*2 and w[0] <= w[1]*2):
             view_vector = (self.current_view_port.camera_pos - candidate_center)
@@ -350,7 +352,7 @@ class WorkPlaneSketchManager(GM):
                                                                align_end_points_center=candidate_center)
         
         self.__candidate_work_plane.lines_3d.append(line)
-        self.__candidate_work_plane.bounding_rec_3d = rec
+        self.__candidate_work_plane.bounding_rec_3d = geometry_utils.fix_rec(rec)
     
     def finish_sketch_create_plane(self):
         if self.sketching:

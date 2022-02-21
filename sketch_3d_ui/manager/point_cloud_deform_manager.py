@@ -1,17 +1,18 @@
+'''
+The manager can solve the deformation operations,
+We apply the Free Form Deformation on point clouds.
+'''
+
 import numpy as np
 import open3d
-
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QImage, QPainter, QColor, QPen
 
 import sketch_3d_ui.geometry.geometry_utils as geometry_utils
-
 from sketch_3d_ui.manager.geometry_manager import GeometryManager as GM
 from sketch_3d_ui.geometry.point_cloud import PointCloud
-
 from sketch_3d_ui.ffd.ffd import FFD
 from sketch_3d_ui.ffd.lattice import LATTICE
-
 from sketch_3d_ui.counter import COUNTER
 
 class PointCloudDeformManager(GM):

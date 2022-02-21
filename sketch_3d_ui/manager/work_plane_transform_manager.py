@@ -1,3 +1,8 @@
+'''
+The manager can solve the work plane transformation,
+users can translate or rotate the work planes.
+'''
+
 from sketch_3d_ui.manager.geometry_manager import GeometryManager as GM
 import sketch_3d_ui.geometry.geometry_utils as geometry_utils
 
